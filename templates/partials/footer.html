@@ -1,0 +1,10 @@
+<footer style="border-top:1px solid var(--border); padding:20px 24px; display:flex; justify-content:space-between; align-items:center; color:var(--muted); font-size:.85rem">
+  <span><?= site_name ?> &mdash; built with pure Python</span>
+  <?py if footer_links: ?>
+    <nav style="display:flex; gap:16px">
+      <?py for label, href in footer_links: ?>
+        <a href="<?= href ?>" style="color:var(--muted)"><?= label ?></a>
+      <?py end ?>
+    </nav>
+  <?py end ?>
+</footer>

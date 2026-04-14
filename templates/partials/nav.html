@@ -1,0 +1,14 @@
+<nav style="background:var(--surface); border-bottom:1px solid var(--border); padding:14px 24px; display:flex; align-items:center; gap:24px">
+  <span style="color:var(--accent); font-weight:700; font-size:1.05rem; letter-spacing:-.01em">
+    PyServer
+  </span>
+  <a href="/">Home</a>
+  <a href="/about">About</a>
+  <a href="/dashboard">Dashboard</a>
+  <a href="/hooks">Hooks</a>
+  <?py if current_user: ?>
+    <span style="margin-left:auto; color:var(--muted); font-size:.9rem">
+      Signed in as <strong style="color:var(--text)"><?= current_user ?></strong>
+    </span>
+  <?py end ?>
+</nav>

@@ -1,0 +1,48 @@
+<?py extend("layout.html") ?>
+
+<?py block "title": ?>Create account · <?= site_name ?><?py endblock ?>
+
+<?py block "extra_css": ?>
+.auth-card { max-width:460px; margin:60px auto; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:36px 40px }
+.auth-card h1 { font-size:1.5rem; margin-bottom:6px }
+.auth-card p  { color:var(--muted); font-size:.9rem; margin-bottom:28px }
+.divider { border:none; border-top:1px solid var(--border); margin:22px 0 }
+.hint { font-size:.78rem; color:var(--muted); margin-top:4px }
+<?py endblock ?>
+
+<?py block "content": ?>
+<div class="auth-card">
+  <h1>Create account</h1>
+  <p>Join <?= site_name ?> today</p>
+
+  <?py if error: ?>
+    <div class="flash flash-error"><?= error ?></div>
+  <?py end ?>
+
+  <form method="POST" action="/register">
+    <div class="form-group">
+      <label for="name">Full name</label>
+      <input type="text" id="name" name="name" placeholder="Alice Smith"
+             value="<?= prefill_name ?>" required autocomplete="name">
+    </div>
+    <div class="form-group">
+      <label for="email">Email address</label>
+      <input type="email" id="email" name="email" placeholder="you@example.com"
+             value="<?= prefill_email ?>" required autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label for="password">Password</label>
+      <input type="password" id="password" name="password"
+             placeholder="At least 8 characters" required autocomplete="new-password">
+      <p class="hint">Minimum 8 characters.</p>
+    </div>
+    <button type="submit" style="width:100%; margin-top:8px">Create account</button>
+  </form>
+
+  <hr class="divider">
+  <p style="text-align:center; color:var(--muted); font-size:.88rem">
+    Already have an account?
+    <a href="/login">Sign in</a>
+  </p>
+</div>
+<?py endblock ?>

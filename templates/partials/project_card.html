@@ -1,0 +1,30 @@
+<div style="background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:18px 20px; margin:10px 0">
+  <div style="display:flex; justify-content:space-between; align-items:flex-start">
+    <strong style="font-size:1rem"><?= project["name"] ?></strong>
+    <?py if project["status"] == "active": ?>
+      <span class="badge badge-ok">active</span>
+    <?py elif project["status"] == "wip": ?>
+      <span class="badge badge-warn">wip</span>
+    <?py else: ?>
+      <span class="badge badge-muted"><?= project["status"] ?></span>
+    <?py end ?>
+  </div>
+  <p style="color:var(--muted); font-size:.9rem; margin:6px 0 10px"><?= project["description"] ?></p>
+  <div style="display:flex; gap:6px; flex-wrap:wrap">
+    <?py for tag in project["tags"]: ?>
+      <span style="background:var(--border); color:var(--text); padding:2px 8px; border-radius:4px; font-size:.78rem"><?= tag ?></span>
+    <?py end ?>
+  </div>
+  <?py if show_score: ?>
+    <div style="margin-top:10px; font-size:.85rem; color:var(--muted)">
+      Score:
+      <?py if project["score"] >= 90: ?>
+        <span style="color:var(--ok); font-weight:600"><?= project["score"] ?> ★</span>
+      <?py elif project["score"] >= 70: ?>
+        <span style="color:var(--warn); font-weight:600"><?= project["score"] ?></span>
+      <?py else: ?>
+        <span style="color:var(--accent)"><?= project["score"] ?></span>
+      <?py end ?>
+    </div>
+  <?py end ?>
+</div>

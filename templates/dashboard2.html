@@ -1,0 +1,60 @@
+<?py extend("layout.html") ?>
+
+<?py block "title": ?><?= title ?> · <?= site_name ?><?py endblock ?>
+
+<?py block "extra_styles": ?>
+  .stat-grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:12px; margin:16px 0 }
+  .stat-card { background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:16px 20px }
+  .stat-card .value { font-size:1.8rem; font-weight:700; color:var(--accent) }
+  .stat-card .label { font-size:.8rem; color:var(--muted); text-transform:uppercase; letter-spacing:.06em; margin-top:2px }
+<?py endblock ?>
+
+<?py block "content": ?>
+
+  <h1 style="color:var(--accent); margin-bottom:4px"><?= title ?></h1>
+  <p style="color:var(--muted); margin-bottom:28px">
+    Welcome back, <strong style="color:var(--text)"><?= user["name"] ?></strong>.
+    Role: <code><?= user["role"] ?></code>
+  </p>
+
+  <!-- ── Stats row (inline Python calculation) ── -->
+  <?py total_score = sum(p["score"] for p in projects) ?>
+  <?py avg_score   = total_score / len(projects) if projects else 0 ?>
+  <?py active_count = sum(1 for p in projects if p["status"] == "active") ?>
+
+  <div class="stat-grid">
+    <div class="stat-card">
+      <div class="value"><?= len(projects) ?></div>
+      <div class="label">Total projects</div>
+    </div>
+    <div class="stat-card">
+      <div class="value"><?= active_count ?></div>
+      <div class="label">Active</div>
+    </div>
+    <div class="stat-card">
+      <div class="value"><?= f"{avg_score:.0f}" ?></div>
+      <div class="label">Avg score</div>
+    </div>
+  </div>
+
+  <!-- ── Project cards – each card is a reusable partial ── -->
+  <h2 style="color:var(--muted); font-size:.85rem; text-transform:uppercase; letter-spacing:.08em; margin:28px 0 4px">
+    Projects
+  </h2>
+
+  <?py if projects: ?>
+    <?py for project in projects: ?>
+      <?py include("partials/project_card.html", show_score=True) ?>
+    <?py end ?>
+  <?py else: ?>
+    <p style="color:var(--muted)"><em>No projects yet.</em></p>
+  <?py end ?>
+
+  <!-- ── Announcement (raw HTML passthrough) ── -->
+  <?py if announcement_html: ?>
+    <div style="background:var(--surface); border-left:3px solid var(--accent); padding:14px 18px; border-radius:0 8px 8px 0; margin-top:28px">
+      <?=! announcement_html ?>
+    </div>
+  <?py end ?>
+
+<?py endblock ?>

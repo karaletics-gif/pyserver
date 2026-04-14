@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><?py block "title": ?><?= site_name ?><?py endblock ?></title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0 }
+    :root {
+      --bg:      #0f0f1a;
+      --surface: #1a1a2e;
+      --border:  #2a2a4a;
+      --text:    #e0e0e0;
+      --muted:   #888;
+      --accent:  #e94560;
+      --ok:      #7ed321;
+      --warn:    #f5a623;
+    }
+    body  { font-family: sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column }
+    a     { color: var(--accent); text-decoration: none }
+    a:hover { text-decoration: underline }
+    code  { background: var(--surface); padding: 2px 6px; border-radius: 4px; font-size: .88em }
+    table { width: 100%; border-collapse: collapse }
+    th, td { padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border) }
+    th    { color: var(--muted); font-weight: 600; font-size: .85rem; text-transform: uppercase; letter-spacing: .06em }
+    .badge { display: inline-block; padding: 2px 9px; border-radius: 99px; font-size: .75rem; font-weight: 600 }
+    .badge-ok   { background: #1a3a1a; color: var(--ok) }
+    .badge-warn { background: #3a2a0a; color: var(--warn) }
+    .badge-muted { background: var(--surface); color: var(--muted) }
+    <?py block "extra_styles": ?><?py endblock ?>
+  </style>
+  <?py block "head": ?><?py endblock ?>
+</head>
+<body>
+
+<?py include("partials/nav.html") ?>
+
+<main style="max-width:860px; margin:48px auto; padding:0 24px; flex:1">
+  <?py block "content": ?>
+    <p style="color:var(--muted)">No content provided.</p>
+  <?py endblock ?>
+</main>
+
+<?py include("partials/footer.html") ?>
+
+<?py block "scripts": ?><?py endblock ?>
+</body>
+</html>
