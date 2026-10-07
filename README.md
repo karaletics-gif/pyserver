@@ -77,6 +77,7 @@ For local SQLite-only development and the test suite, set `DB_PATH` explicitly (
 | `/posts/new` | Create a post | Editor or Admin |
 | `/posts/<slug>/edit` | Edit a post and review/restore revisions | Editor or Admin |
 | `/py-admin` | WordPress-style admin dashboard, users, settings, and themes | Admin |
+| `/py-admin/users/<id>/edit` | Edit a user's profile and admin personal options | Admin |
 | `/admin` | Compatibility redirect to `/py-admin` | Any visitor |
 | `/account/password` | Change the signed-in account password | Signed-in |
 
@@ -133,7 +134,7 @@ Run from the repository root:
 python -m modules.auth.test_auth
 python -m modules.test_orm
 python -m database.test_installer
-python -m database.test_wp_schema
+python -m database.test_py_schema
 python -m change_password.content.test_content
 python -m templates.test_template
 python -m templates.test_integration

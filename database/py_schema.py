@@ -1,48 +1,48 @@
-"""WordPress-shaped metadata, taxonomy, comment, and link tables."""
+"""PyServer-prefixed metadata, taxonomy, comment, and link tables."""
 
 from database.orm import Field, Model
 
 
-class _WordPressModel(Model):
-    _wp_id_field = ""
+class _PyModel(Model):
+    _native_id_field = ""
 
     def save(self) -> None:
         super().save()
-        if self._wp_id_field and getattr(self, self._wp_id_field) != self.id:
-            setattr(self, self._wp_id_field, self.id)
+        if self._native_id_field and getattr(self, self._native_id_field) != self.id:
+            setattr(self, self._native_id_field, self.id)
             super().save()
 
 
-class UserMeta(_WordPressModel):
+class UserMeta(_PyModel):
     _table = "usermeta"
-    _wp_id_field = "umeta_id"
+    _native_id_field = "umeta_id"
     umeta_id = Field("INTEGER", nullable=False, default=0, index=True)
     user_id = Field("INTEGER", nullable=False, index=True)
     meta_key = Field("TEXT")
     meta_value = Field("TEXT")
 
 
-class PostMeta(_WordPressModel):
+class PostMeta(_PyModel):
     _table = "postmeta"
-    _wp_id_field = "meta_id"
+    _native_id_field = "meta_id"
     meta_id = Field("INTEGER", nullable=False, default=0, index=True)
     post_id = Field("INTEGER", nullable=False, index=True)
     meta_key = Field("TEXT", index=True)
     meta_value = Field("TEXT")
 
 
-class Term(_WordPressModel):
+class Term(_PyModel):
     _table = "terms"
-    _wp_id_field = "term_id"
+    _native_id_field = "term_id"
     term_id = Field("INTEGER", nullable=False, default=0, index=True)
     name = Field("TEXT", nullable=False)
     slug = Field("TEXT", nullable=False, index=True)
     term_group = Field("INTEGER", nullable=False, default=0)
 
 
-class TermTaxonomy(_WordPressModel):
+class TermTaxonomy(_PyModel):
     _table = "term_taxonomy"
-    _wp_id_field = "term_taxonomy_id"
+    _native_id_field = "term_taxonomy_id"
     term_taxonomy_id = Field("INTEGER", nullable=False, default=0, index=True)
     term_id = Field("INTEGER", nullable=False, index=True)
     taxonomy = Field("TEXT", nullable=False, index=True)
@@ -51,16 +51,16 @@ class TermTaxonomy(_WordPressModel):
     count = Field("INTEGER", nullable=False, default=0)
 
 
-class TermRelationship(_WordPressModel):
+class TermRelationship(_PyModel):
     _table = "term_relationships"
     object_id = Field("INTEGER", nullable=False, index=True)
     term_taxonomy_id = Field("INTEGER", nullable=False, index=True)
     term_order = Field("INTEGER", nullable=False, default=0)
 
 
-class Comment(_WordPressModel):
+class Comment(_PyModel):
     _table = "comments"
-    _wp_id_field = "comment_id"
+    _native_id_field = "comment_id"
     comment_id = Field("INTEGER", nullable=False, default=0, index=True)
     comment_post_id = Field("INTEGER", nullable=False, index=True)
     comment_author = Field("TEXT", nullable=False)
@@ -78,18 +78,18 @@ class Comment(_WordPressModel):
     user_id = Field("INTEGER", nullable=False, default=0, index=True)
 
 
-class CommentMeta(_WordPressModel):
+class CommentMeta(_PyModel):
     _table = "commentmeta"
-    _wp_id_field = "meta_id"
+    _native_id_field = "meta_id"
     meta_id = Field("INTEGER", nullable=False, default=0, index=True)
     comment_id = Field("INTEGER", nullable=False, index=True)
     meta_key = Field("TEXT", index=True)
     meta_value = Field("TEXT")
 
 
-class Link(_WordPressModel):
+class Link(_PyModel):
     _table = "links"
-    _wp_id_field = "link_id"
+    _native_id_field = "link_id"
     link_id = Field("INTEGER", nullable=False, default=0, index=True)
     link_url = Field("TEXT", nullable=False)
     link_name = Field("TEXT", nullable=False)
@@ -105,16 +105,16 @@ class Link(_WordPressModel):
     link_rss = Field("TEXT", nullable=False, default="")
 
 
-class TermMeta(_WordPressModel):
+class TermMeta(_PyModel):
     _table = "termmeta"
-    _wp_id_field = "meta_id"
+    _native_id_field = "meta_id"
     meta_id = Field("INTEGER", nullable=False, default=0, index=True)
     term_id = Field("INTEGER", nullable=False, index=True)
     meta_key = Field("TEXT", index=True)
     meta_value = Field("TEXT")
 
 
-class WordPressSchema:
+class PySchema:
     TABLES = (
         UserMeta, PostMeta, Term, TermTaxonomy, TermRelationship,
         Comment, CommentMeta, Link, TermMeta,
@@ -147,12 +147,11 @@ class WordPressSchema:
                     continue
                 columns = {row["name"].lower() for row in conn.execute(f'PRAGMA table_info("{table}")')}
 
-            alias = getattr(model, "_wp_id_field", "")
+            native_id = getattr(model, "_native_id_field", "")
             if "id" not in columns:
-                if mysql and not alias:
-                    definition = "BIGINT NOT NULL AUTO_INCREMENT UNIQUE"
-                else:
-                    definition = "BIGINT NULL" if mysql else "INTEGER"
+                definition = "BIGINT NOT NULL AUTO_INCREMENT UNIQUE" if mysql and not native_id else (
+                    "BIGINT NULL" if mysql else "INTEGER"
+                )
                 conn.execute(f'ALTER TABLE `{table}` ADD COLUMN `id` {definition}')
                 if not mysql:
                     conn.execute(f'UPDATE `{table}` SET `id` = rowid WHERE `id` IS NULL')
@@ -162,6 +161,6 @@ class WordPressSchema:
             if "updated_at" not in columns:
                 conn.execute(f'ALTER TABLE `{table}` ADD COLUMN `updated_at` VARCHAR(32) NULL' if mysql
                              else f'ALTER TABLE `{table}` ADD COLUMN `updated_at` TEXT')
-            if alias and alias.lower() in columns:
-                conn.execute(f'UPDATE `{table}` SET `id` = `{alias}` WHERE `{alias}` IS NOT NULL')
+            if native_id and native_id.lower() in columns:
+                conn.execute(f'UPDATE `{table}` SET `id` = `{native_id}` WHERE `{native_id}` IS NOT NULL')
         conn.commit()

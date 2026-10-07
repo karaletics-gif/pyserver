@@ -16,7 +16,7 @@ from change_password.users.model import User
 from change_password.content.models import Post, PostRevision
 from change_password.settings.model import Setting
 from modules.auth.passwords import hash_password
-from database.wp_schema import WordPressSchema
+from database.py_schema import PySchema
 
 
 def init_db(path: str | dict = ":memory:", seed: bool = False) -> None:
@@ -41,15 +41,15 @@ def init_db(path: str | dict = ":memory:", seed: bool = False) -> None:
         _migrate_posts()
     if _table_exists("py_options"):
         _migrate_options()
-    WordPressSchema.migrate_existing_tables()
+    PySchema.migrate_existing_tables()
 
     # ── Create tables ──────────────────────────────────────────────────
     User.create_table()
     Post.create_table()
     PostRevision.create_table()
     Setting.create_table()
-    WordPressSchema.create_tables()
-    _migrate_wp_roles()
+    PySchema.create_tables()
+    _migrate_imported_roles()
 
     if seed:
         _seed()
@@ -199,6 +199,14 @@ def _migrate_users() -> None:
         "user_activation_key": "VARCHAR(255) NULL" if mysql else "TEXT NOT NULL DEFAULT ''",
         "user_status": "BIGINT NOT NULL DEFAULT 0" if mysql else "INTEGER NOT NULL DEFAULT 0",
         "display_name": "VARCHAR(250) NULL" if mysql else "TEXT NOT NULL DEFAULT ''",
+        "first_name": "VARCHAR(100) NULL" if mysql else "TEXT NOT NULL DEFAULT ''",
+        "last_name": "VARCHAR(100) NULL" if mysql else "TEXT NOT NULL DEFAULT ''",
+        "nickname": "VARCHAR(100) NULL" if mysql else "TEXT NOT NULL DEFAULT ''",
+        "user_url": "VARCHAR(255) NULL" if mysql else "TEXT NOT NULL DEFAULT ''",
+        "admin_color_scheme": "VARCHAR(32) NULL" if mysql else "TEXT NOT NULL DEFAULT 'fresh'",
+        "rich_editing": "BIGINT NOT NULL DEFAULT 1" if mysql else "INTEGER NOT NULL DEFAULT 1",
+        "comment_shortcuts": "BIGINT NOT NULL DEFAULT 0" if mysql else "INTEGER NOT NULL DEFAULT 0",
+        "show_admin_bar_front": "BIGINT NOT NULL DEFAULT 1" if mysql else "INTEGER NOT NULL DEFAULT 1",
         "id": "BIGINT NULL" if mysql else "INTEGER",
         "created_at": "VARCHAR(32) NULL" if mysql else "TEXT",
         "updated_at": "VARCHAR(32) NULL" if mysql else "TEXT",
@@ -264,7 +272,7 @@ def _migrate_options() -> None:
     conn.commit()
 
 
-def _migrate_wp_roles() -> None:
+def _migrate_imported_roles() -> None:
     """Translate serialized WordPress role capabilities to PyServer roles."""
     if not _table_exists("py_usermeta"):
         return

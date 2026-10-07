@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-import os
 import hashlib
+import os
 import sqlite3
 import tempfile
 import unittest
@@ -18,7 +18,6 @@ from database.orm import QuerySet, get_connection, pool
 def make_phpass(password: str) -> str:
     alphabet = "./0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"
     salt = "12345678"
-    count_char = alphabet[8]
     digest = hashlib.md5(salt.encode() + password.encode()).digest()
     for _ in range(1 << 8):
         digest = hashlib.md5(digest + password.encode()).digest()
@@ -41,7 +40,7 @@ def make_phpass(password: str) -> str:
             break
         index += 1
         encoded.append(alphabet[(value >> 18) & 63])
-    return "$P$" + count_char + salt + "".join(encoded)
+    return "$P$" + alphabet[8] + salt + "".join(encoded)
 
 
 class PrefixMigrationTests(unittest.TestCase):

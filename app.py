@@ -63,7 +63,7 @@ from modules.auth.service     import (
 from change_password.users.model     import User
 from change_password.settings.model  import Setting
 from change_password.content.models  import Post
-from database.wp_schema import Comment
+from database.py_schema import Comment
 from change_password.content.service import (
     list_posts, get_post_by_slug, get_page_by_slug,
     get_revisions, create_post, update_post,
@@ -471,6 +471,59 @@ def admin_panel(request: Request) -> Response:
     resp = Response.html(admin_render("admin.html", request, ctx))
     clear_flash(resp)
     return resp
+
+
+@router.any("/py-admin/users/<uid>/edit")
+@require_capability("manage_users")
+def admin_edit_user(request: Request, uid: str) -> Response:
+    try:
+        user = QuerySet(User).get(id=int(uid))
+    except (ValueError, User.DoesNotExist, User.MultipleObjectsReturned):
+        return Response.not_found()
+
+    error = None
+    saved = False
+    if request.method == "POST":
+        email = request.form.get("email", "").strip().lower()
+        if not email or "@" not in email:
+            error = "Enter a valid email address."
+        else:
+            duplicate = QuerySet(User).filter(email=email).first()
+            if duplicate and duplicate.id != user.id:
+                error = "That email address is already used by another account."
+        color = request.form.get("admin_color_scheme", "fresh")
+        colors = {"fresh", "light", "blue", "coffee", "ectoplasm", "midnight", "ocean", "sunrise"}
+        if not error and color not in colors:
+            error = "Choose a valid admin color scheme."
+        if not error:
+            user.first_name = request.form.get("first_name", "").strip()
+            user.last_name = request.form.get("last_name", "").strip()
+            user.nickname = request.form.get("nickname", "").strip() or user.name
+            user.display_name = request.form.get("display_name", "").strip() or user.nickname
+            user.name = user.display_name
+            user.email = email
+            user.user_url = request.form.get("user_url", "").strip()
+            user.bio = request.form.get("bio", "").strip()
+            user.rich_editing = int(request.form.get("disable_visual_editor") != "1")
+            user.admin_color_scheme = color
+            user.comment_shortcuts = int(request.form.get("comment_shortcuts") == "1")
+            user.show_admin_bar_front = int(request.form.get("show_admin_bar_front") == "1")
+            user.save()
+            saved = True
+
+    response = Response.html(admin_render("admin_user.html", request, {
+        "edit_user": user,
+        "profile_error": error,
+        "profile_saved": saved,
+        "admin_color_options": [
+            ("fresh", "Default"), ("light", "Light"), ("blue", "Blue"),
+            ("coffee", "Coffee"), ("ectoplasm", "Ectoplasm"),
+            ("midnight", "Midnight"), ("ocean", "Ocean"), ("sunrise", "Sunrise"),
+        ],
+    }))
+    if saved:
+        set_flash(response, "User profile updated.", "ok")
+    return response
 
 @router.post("/admin/users/<uid>/role")
 @require_capability("manage_roles")

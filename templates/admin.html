@@ -120,7 +120,8 @@
     <section class="section" id="users">
       <h2>Users</h2>
       <table><thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead><tbody>
-      <?py for user in users: ?><tr><td><?= user.name ?></td><td><?= user.email ?></td><td><?= user.role ?></td><td><?py if user.active: ?>Active<?py else: ?>Inactive<?py end ?></td><td>
+      <?py for user in users: ?><tr><td><a href="/py-admin/users/<?= user.id ?>/edit"><?= user.name ?></a></td><td><?= user.email ?></td><td><?= user.role ?></td><td><?py if user.active: ?>Active<?py else: ?>Inactive<?py end ?></td><td>
+        <a href="/py-admin/users/<?= user.id ?>/edit">Edit profile</a>
         <form class="inline-form" method="POST" action="/admin/users/<?= user.id ?>/role"><input type="hidden" name="_csrf" value="<?= csrf_token ?>"><select name="role" aria-label="Role for <?= user.name ?>"><?py for role in role_options: ?><option value="<?= role ?>"<?py if role == user.role: ?> selected<?py end ?>><?= role ?></option><?py end ?></select><button>Update role</button></form>
         <form class="inline-form" method="POST" action="/admin/users/<?= user.id ?>/toggle"><input type="hidden" name="_csrf" value="<?= csrf_token ?>"><button><?py if user.active: ?>Deactivate<?py else: ?>Activate<?py end ?></button></form>
       </td></tr><?py end ?>

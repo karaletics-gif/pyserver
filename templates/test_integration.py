@@ -195,11 +195,35 @@ check("shows users table",          "Users" in r.body)
 check("shows settings form",        "Site" in r.body or "settings" in r.body.lower())
 check("shows role selects",         "role" in r.body.lower())
 
+profile_path = f"/py-admin/users/{real_admin.id}/edit"
+r = dispatch("GET", profile_path, cookie=f"pysess={admin_sess}")
+check("user profile page 200",      r.status == 200)
+check("personal options shown",     "Admin Color Scheme" in r.body and "Keyboard Shortcuts" in r.body)
+check("PyServer branding shown",    "PyServer" in r.body and "WordPress" not in r.body)
+r = dispatch("POST", profile_path, cookie=f"pysess={admin_sess}", form={
+    "first_name": "Real",
+    "last_name": "Administrator",
+    "nickname": "Site Admin",
+    "display_name": "Site Admin",
+    "email": "realadmin@test.com",
+    "user_url": "https://example.test",
+    "bio": "PyServer administrator",
+    "admin_color_scheme": "ocean",
+    "comment_shortcuts": "1",
+    "show_admin_bar_front": "1",
+})
+check("profile update shows notice", "User updated." in r.body and "Back to Users" in r.body)
+saved_admin = QuerySet(User).get(id=real_admin.id)
+check("profile options persisted", saved_admin.admin_color_scheme == "ocean" and
+      saved_admin.comment_shortcuts == 1 and saved_admin.rich_editing == 1)
+
 # Member cannot reach admin
 r = dispatch("POST", "/login", form={"email":"jane@test.com","password":"newjane5678"})
 mem_sess = session_cookie(r)
 r = dispatch("GET", "/py-admin", cookie=f"pysess={mem_sess}")
 check("member → 403",               r.status == 403)
+r = dispatch("GET", profile_path, cookie=f"pysess={mem_sess}")
+check("member cannot edit user profile", r.status == 403)
 
 # ─────────────────────────────────────────────────────────────────────────────
 print("\n── Admin: save settings ─────────────────────────────────────────────")

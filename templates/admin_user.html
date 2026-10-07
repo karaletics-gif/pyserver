@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Edit user <?= edit_user.name ?> · PyServer</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#f0f1f2;color:#20272c;font:14px/1.5 "Segoe UI",Arial,sans-serif}a{color:#176b9a;text-decoration:none}a:hover{color:#0c4767}
+    .topbar{height:42px;background:#20272c;color:#eee;display:flex;align-items:center;gap:18px;padding:0 16px}.topbar a{color:#f4f4f4}.brand{font-weight:700}.space{flex:1}.topbar form{margin:0}.topbar button{background:transparent;border:0;color:white;cursor:pointer}
+    .layout{min-height:calc(100vh - 42px);display:grid;grid-template-columns:220px minmax(0,1fr)}.sidebar{background:#293238;color:#e7ebed;padding:14px 0}.nav-title{padding:8px 18px;color:#aeb9bd;font-size:11px;text-transform:uppercase;font-weight:700}.side-link{display:block;padding:9px 17px;color:#e7ebed;border-left:3px solid transparent}.side-link.active,.side-link:hover{background:#3a474d;color:white;border-left-color:#4c9bd0}.main{padding:22px clamp(18px,2vw,32px);min-width:0}.crumb{font-size:12px;color:#68767c;margin:0 0 5px}h1{font-size:24px;font-weight:500;margin:0 0 16px}h2{font-size:17px;margin:0 0 14px}.heading{display:flex;align-items:center;gap:12px;margin-bottom:15px}.heading h1{margin:0}.button{border:1px solid #176b9a;background:#f6fbff;color:#176b9a;border-radius:3px;padding:6px 10px;font:inherit}
+    .notice{background:#fff;border:1px solid #d8dcdf;border-left:4px solid #489b58;padding:12px 16px;margin:0 0 20px}.notice.error{border-left-color:#b43d36}.notice p{margin:0 0 5px}.notice p:last-child{margin-bottom:0}.notice a{display:inline-block;margin-top:4px}
+    .panel{background:#fff;border:1px solid #d9dddf;padding:20px 22px;margin-bottom:18px;max-width:1200px}.row{display:grid;grid-template-columns:175px minmax(200px,1fr);gap:18px;align-items:start;padding:13px 0;border-bottom:1px solid #edf0f1}.row:last-child{border:0}.row-title{font-weight:600;padding-top:8px}.field{min-width:0}label{font-weight:500}.field input[type=text],.field input[type=email],.field input[type=url],.field select,.field textarea{width:min(100%,520px);padding:8px 10px;min-height:36px;border:1px solid #9ea9ae;border-radius:3px;font:inherit;background:white}.field textarea{height:100px;resize:vertical}.hint{display:block;color:#68767c;font-size:12px;margin-top:4px}.checkline{display:flex;gap:8px;align-items:flex-start}.checkline input{margin-top:4px}.scheme-grid{display:grid;grid-template-columns:repeat(4,minmax(115px,1fr));gap:12px}.scheme{position:relative;border:1px solid transparent;padding:8px;min-height:61px}.scheme.selected{background:#edf2f4;border-color:#d9dfe1}.scheme label{display:flex;align-items:center;gap:7px;cursor:pointer}.scheme input{margin:0}.swatches{display:flex;height:16px;margin:8px 0 0 23px}.swatches i{flex:1}.fresh i:nth-child(1){background:#20272c}.fresh i:nth-child(2){background:#3a474d}.fresh i:nth-child(3){background:#2879aa}.fresh i:nth-child(4){background:#52a4d1}.light i:nth-child(1){background:#e5e5e5}.light i:nth-child(2){background:#aaa}.light i:nth-child(3){background:#bd5728}.light i:nth-child(4){background:#63a2ba}.blue i:nth-child(1){background:#23546c}.blue i:nth-child(2){background:#5d93ad}.blue i:nth-child(3){background:#7db4c9}.blue i:nth-child(4){background:#a8cdd9}.coffee i:nth-child(1){background:#413e3b}.coffee i:nth-child(2){background:#706962}.coffee i:nth-child(3){background:#b49f83}.coffee i:nth-child(4){background:#8e9a74}.ectoplasm i:nth-child(1){background:#403254}.ectoplasm i:nth-child(2){background:#72558f}.ectoplasm i:nth-child(3){background:#91b04a}.ectoplasm i:nth-child(4){background:#cc7136}.midnight i:nth-child(1){background:#22272b}.midnight i:nth-child(2){background:#40484d}.midnight i:nth-child(3){background:#62a5bc}.midnight i:nth-child(4){background:#c44f45}.ocean i:nth-child(1){background:#52777e}.ocean i:nth-child(2){background:#7d9c9a}.ocean i:nth-child(3){background:#a4bba8}.ocean i:nth-child(4){background:#c0b8a8}.sunrise i:nth-child(1){background:#a43e39}.sunrise i:nth-child(2){background:#d4564c}.sunrise i:nth-child(3){background:#d88344}.sunrise i:nth-child(4){background:#c6ae3b}.actions{padding:15px 0}.primary{background:#2271a1;color:white;border:1px solid #135e87;border-radius:3px;padding:8px 14px;font:inherit;font-weight:600;cursor:pointer}.primary:hover{background:#135e87}
+    @media(max-width:760px){.layout{grid-template-columns:1fr}.sidebar{display:flex;flex-wrap:wrap;padding:6px;gap:2px}.nav-title{width:100%;padding:5px 8px}.side-link{padding:8px 10px;border:0;border-bottom:2px solid transparent}.side-link.active{border-bottom-color:#52a4d1}.row{grid-template-columns:1fr;gap:6px}.row-title{padding-top:0}.scheme-grid{grid-template-columns:repeat(2,minmax(120px,1fr))}.main{padding:18px 12px}}
+  </style>
+</head>
+<body>
+<header class="topbar"><a class="brand" href="/py-admin">PyServer</a><a href="/">Visit site</a><span class="space"></span><span>Howdy, <?= current_user.name ?></span><form method="POST" action="/logout"><input type="hidden" name="_csrf" value="<?= csrf_token ?>"><button>Sign out</button></form></header>
+<div class="layout">
+  <aside class="sidebar" aria-label="PyServer admin navigation">
+    <div class="nav-title">PyServer</div>
+    <a class="side-link" href="/py-admin">Dashboard</a>
+    <a class="side-link" href="/py-admin#content">Posts</a>
+    <a class="side-link" href="/py-admin#pages">Pages</a>
+    <a class="side-link" href="/py-admin#comments">Comments</a>
+    <a class="side-link" href="/py-admin#appearance">Appearance</a>
+    <a class="side-link active" href="/py-admin#users">Users</a>
+    <a class="side-link" href="/py-admin#settings">Settings</a>
+    <div class="nav-title">Users</div>
+    <a class="side-link" href="/py-admin#users">All Users</a>
+    <a class="side-link" href="/register">Add New</a>
+    <a class="side-link" href="/dashboard">Your Profile</a>
+    <a class="side-link" href="/py-admin#tools">Tools</a>
+  </aside>
+  <main class="main">
+    <p class="crumb"><a href="/py-admin">Dashboard</a> › <a href="/py-admin#users">Users</a></p>
+    <div class="heading"><h1>Edit User <?= edit_user.display_name ?></h1><a class="button" href="/register">Add New</a></div>
+    <?py if profile_saved: ?><div class="notice"><p><strong>User updated.</strong></p><a href="/py-admin#users">← Back to Users</a></div><?py end ?>
+    <?py if profile_error: ?><div class="notice error"><p><strong><?= profile_error ?></strong></p><a href="/py-admin#users">← Back to Users</a></div><?py end ?>
+    <form method="POST" action="/py-admin/users/<?= edit_user.id ?>/edit">
+      <input type="hidden" name="_csrf" value="<?= csrf_token ?>">
+      <section class="panel">
+        <h2>Personal Options</h2>
+        <div class="row"><div class="row-title">Visual Editor</div><div class="field"><label class="checkline"><input type="checkbox" name="disable_visual_editor" value="1"<?py if not edit_user.rich_editing: ?> checked<?py end ?>> Disable the visual editor when writing</label></div></div>
+        <div class="row"><div class="row-title">Admin Color Scheme</div><div class="field"><div class="scheme-grid">
+          <?py for value, label in admin_color_options: ?>
+          <div class="scheme<?py if edit_user.admin_color_scheme == value: ?> selected<?py end ?>"><label><input type="radio" name="admin_color_scheme" value="<?= value ?>"<?py if edit_user.admin_color_scheme == value: ?> checked<?py end ?>> <?= label ?></label><span class="swatches <?= value ?>"><?py for n in range(4): ?><i></i><?py end ?></span></div>
+          <?py end ?>
+        </div></div></div>
+        <div class="row"><div class="row-title">Keyboard Shortcuts</div><div class="field"><label class="checkline"><input type="checkbox" name="comment_shortcuts" value="1"<?py if edit_user.comment_shortcuts: ?> checked<?py end ?>> Enable keyboard shortcuts for comment moderation</label><span class="hint">Available to administrators and editors when comment moderation is enabled.</span></div></div>
+        <div class="row"><div class="row-title">Toolbar</div><div class="field"><label class="checkline"><input type="checkbox" name="show_admin_bar_front" value="1"<?py if edit_user.show_admin_bar_front: ?> checked<?py end ?>> Show Toolbar when viewing site</label></div></div>
+      </section>
+      <section class="panel">
+        <h2>Name</h2>
+        <div class="row"><label class="row-title" for="username">Username</label><div class="field"><input id="username" type="text" value="<?= edit_user.user_login ?>" disabled><span class="hint">Usernames cannot be changed.</span></div></div>
+        <div class="row"><label class="row-title" for="first_name">First Name</label><div class="field"><input id="first_name" name="first_name" type="text" value="<?= edit_user.first_name ?>"></div></div>
+        <div class="row"><label class="row-title" for="last_name">Last Name</label><div class="field"><input id="last_name" name="last_name" type="text" value="<?= edit_user.last_name ?>"></div></div>
+        <div class="row"><label class="row-title" for="nickname">Nickname</label><div class="field"><input id="nickname" name="nickname" type="text" value="<?= edit_user.nickname ?>" required></div></div>
+        <div class="row"><label class="row-title" for="display_name">Display name publicly as</label><div class="field"><select id="display_name" name="display_name"><option value="<?= edit_user.name ?>" selected><?= edit_user.name ?></option><option value="<?= edit_user.nickname ?>"><?= edit_user.nickname ?></option></select></div></div>
+      </section>
+      <section class="panel">
+        <h2>Contact Info</h2>
+        <div class="row"><label class="row-title" for="email">Email</label><div class="field"><input id="email" name="email" type="email" value="<?= edit_user.email ?>" required></div></div>
+        <div class="row"><label class="row-title" for="user_url">Website</label><div class="field"><input id="user_url" name="user_url" type="url" value="<?= edit_user.user_url ?>"></div></div>
+      </section>
+      <section class="panel">
+        <h2>About the User</h2>
+        <div class="row"><label class="row-title" for="bio">Biographical Info</label><div class="field"><textarea id="bio" name="bio"><?= edit_user.bio ?></textarea><span class="hint">Share a short description for this account.</span></div></div>
+      </section>
+      <div class="actions"><button class="primary" type="submit">Update User</button></div>
+    </form>
+  </main>
+</div>
+</body>
+</html>
