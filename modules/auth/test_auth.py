@@ -57,14 +57,12 @@ check("both verify",                 verify_password("same-password", h2) and
 
 check("needs_rehash false (fresh)",  not needs_rehash(h))
 check("needs_rehash true (old)",     needs_rehash("pbkdf2$1000$abc$def"))
-check("empty password raises",       False)   # will be overridden
 try:
     hash_password("")
     _failures += 1
     print(f"  {FAIL}  empty password raises  (no exception)")
 except ValueError:
     print(f"  {PASS}  empty password raises")
-    _failures -= 1   # undo the pre-set failure
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -306,6 +304,7 @@ class MockRouter:
 _, tok5 = login("alice@example.com", "securepassword1")
 
 class ReqMiddleware:
+    method = "GET"
     headers = {"Cookie": f"pysess={tok5}"}
     _auth_user_resolved = False
     user = None
@@ -319,6 +318,7 @@ check("middleware sets is_authenticated", body["auth"] is True)
 check("middleware sets is_admin",         body["admin"] is True)
 
 class ReqNoAuth:
+    method = "GET"
     headers = {}
     _auth_user_resolved = False
     user = None

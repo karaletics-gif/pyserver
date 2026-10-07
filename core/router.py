@@ -42,11 +42,13 @@ class Router:
     # ── Dispatch ─────────────────────────────────────────────────────────────
 
     def dispatch(self, request: Request) -> Response:
+        path_matched = False
         for pattern, param_names, allowed_methods, handler in self._routes:
             match = pattern.fullmatch(request.path)
             if match:
+                path_matched = True
                 if request.method not in allowed_methods:
-                    return Response.method_not_allowed()
+                    continue
                 kwargs = dict(zip(param_names, match.groups()))
                 try:
                     return handler(request, **kwargs)
@@ -55,7 +57,7 @@ class Router:
                         f"<h1>500 – Internal Server Error</h1><pre>{exc}</pre>",
                         status=500,
                     )
-        return Response.not_found()
+        return Response.method_not_allowed() if path_matched else Response.not_found()
 
     # ── Helpers ───────────────────────────────────────────────────────────────
 

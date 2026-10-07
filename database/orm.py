@@ -32,6 +32,7 @@ Usage
 from __future__ import annotations
 
 import sqlite3
+import re
 import threading
 from datetime import datetime
 from typing import Any, Iterator
@@ -44,7 +45,7 @@ from typing import Any, Iterator
 class _Pool:
     def __init__(self) -> None:
         self._lock  = threading.Lock()
-        self._conns: dict[str, sqlite3.Connection] = {}
+        self._conns: dict[str, Any] = {}
         self._default: str | None = None
 
     def connect(self, path: str = ":memory:", default: bool = True) -> sqlite3.Connection:
@@ -59,7 +60,29 @@ class _Pool:
                 self._default = path
             return self._conns[path]
 
-    def get(self, path: str | None = None) -> sqlite3.Connection:
+    def connect_mysql(self, config: dict[str, Any], default: bool = True):
+        import mysql.connector
+
+        key = "mysql://{}:{}/{}".format(
+            config.get("host", "127.0.0.1"), config.get("port", 3306), config["database"]
+        )
+        with self._lock:
+            if key not in self._conns:
+                raw = mysql.connector.connect(
+                    host=config.get("host", "127.0.0.1"),
+                    port=int(config.get("port", 3306)),
+                    user=config["user"],
+                    password=config["password"],
+                    database=config["database"],
+                    charset="utf8mb4",
+                    autocommit=False,
+                )
+                self._conns[key] = _MySQLConnection(raw)
+            if default or self._default is None:
+                self._default = key
+            return self._conns[key]
+
+    def get(self, path: str | None = None):
         key = path or self._default
         if key is None or key not in self._conns:
             raise RuntimeError(
@@ -80,13 +103,82 @@ class _Pool:
 pool = _Pool()
 
 
-def connect(path: str = ":memory:", default: bool = True) -> sqlite3.Connection:
+def connect(path: str = ":memory:", default: bool = True):
     """Open (or reuse) a connection to *path*. Call once at app startup."""
     return pool.connect(path, default=default)
 
 
-def get_connection(path: str | None = None) -> sqlite3.Connection:
+def connect_mysql(config: dict[str, Any], default: bool = True):
+    """Connect the ORM to a configured MySQL or MariaDB database."""
+    return pool.connect_mysql(config, default=default)
+
+
+def get_connection(path: str | None = None):
     return pool.get(path)
+
+
+class _MySQLRow(dict):
+    def __getitem__(self, key):
+        if isinstance(key, int):
+            return tuple(self.values())[key]
+        return super().__getitem__(key)
+
+
+class _MySQLCursor:
+    def __init__(self, cursor):
+        self._cursor = cursor
+        self.rowcount = cursor.rowcount
+        self.lastrowid = cursor.lastrowid
+
+    def fetchone(self):
+        row = self._cursor.fetchone()
+        return _MySQLRow(row) if row is not None else None
+
+    def fetchall(self):
+        return [_MySQLRow(row) for row in self._cursor.fetchall()]
+
+
+class _MySQLConnection:
+    dialect = "mysql"
+
+    def __init__(self, connection):
+        self._connection = connection
+
+    def execute(self, sql: str, params=()):
+        from mysql.connector import Error
+
+        sql = re.sub(r'"([A-Za-z_][A-Za-z0-9_]*)"', r'`\1`', sql)
+        sql = sql.replace("?", "%s")
+        sql = re.sub(r"CREATE INDEX IF NOT EXISTS", "CREATE INDEX", sql, flags=re.I)
+        cursor = self._connection.cursor(dictionary=True)
+        try:
+            cursor.execute(sql, tuple(params))
+        except Error as exc:
+            cursor.close()
+            if exc.errno == 1061 and sql.lstrip().upper().startswith("CREATE INDEX "):
+                return _MySQLCursor(_EmptyMySQLCursor())
+            raise
+        return _MySQLCursor(cursor)
+
+    def commit(self):
+        self._connection.commit()
+
+    def close(self):
+        self._connection.close()
+
+
+class _EmptyMySQLCursor:
+    rowcount = 0
+    lastrowid = None
+
+    def close(self):
+        pass
+
+    def fetchone(self):
+        return None
+
+    def fetchall(self):
+        return []
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -127,15 +219,30 @@ class Field:
         self.default     = default
         self.index       = index
 
-    def sql_definition(self) -> str:
-        parts = [f'"{self.name}"', self.col_type]
+    def sql_definition(self, dialect: str = "sqlite") -> str:
+        col_type = self.col_type
+        if dialect == "mysql":
+            if self.primary_key:
+                col_type = "BIGINT"
+            elif self.col_type == "TEXT" and (self.unique or self.index):
+                col_type = "VARCHAR(191)"
+            elif self.col_type == "TEXT":
+                col_type = "LONGTEXT"
+            elif self.col_type == "INTEGER":
+                col_type = "BIGINT"
+        quote = "`" if dialect == "mysql" else '"'
+        parts = [f"{quote}{self.name}{quote}", col_type]
         if self.primary_key:
-            parts.append("PRIMARY KEY AUTOINCREMENT")
+            parts.append("PRIMARY KEY" if dialect == "mysql" else "PRIMARY KEY AUTOINCREMENT")
+            if dialect == "mysql":
+                parts.append("AUTO_INCREMENT")
         if not self.nullable and not self.primary_key:
             parts.append("NOT NULL")
         if self.unique:
             parts.append("UNIQUE")
-        if self.default is not None:
+        if self.default is not None and not (
+            dialect == "mysql" and isinstance(self.default, str)
+        ):
             parts.append(f"DEFAULT {self._sql_default()}")
         return " ".join(parts)
 
@@ -476,20 +583,22 @@ class Model(metaclass=ModelMeta):
         guard = "IF NOT EXISTS " if if_not_exists else ""
         col_defs = []
         indices  = []
+        conn = get_connection()
+        dialect = getattr(conn, "dialect", "sqlite")
         for name, field in cls._fields.items():
-            col_defs.append(f"    {field.sql_definition()}")
+            col_defs.append(f"    {field.sql_definition(dialect)}")
             if field.index and not field.primary_key:
                 idx_name = f"idx_{cls._table}_{name}"
+                guard_index = "" if dialect == "mysql" else "IF NOT EXISTS "
                 indices.append(
-                    f"CREATE INDEX IF NOT EXISTS {idx_name} "
-                    f"ON {cls._table} ({name});"
+                    f"CREATE INDEX {guard_index}{idx_name} "
+                    f"ON `{cls._table}` (`{name}`);"
                 )
         sql = (
             f"CREATE TABLE {guard}{cls._table} (\n"
             + ",\n".join(col_defs)
             + "\n);"
         )
-        conn = get_connection()
         conn.execute(sql)
         for idx_sql in indices:
             conn.execute(idx_sql)

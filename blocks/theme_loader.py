@@ -179,6 +179,23 @@ class Theme:
         """
         ctx = dict(context or {})
 
+        for key, value in {
+            "current_user": None,
+            "csrf_token": "",
+            "posts": [],
+            "post": None,
+            "page": None,
+            "query": "",
+            "results": [],
+            "page_title": None,
+            "page_message": None,
+            "current_page": 1,
+            "total_pages": None,
+            "prev_page": None,
+            "next_page": None,
+        }.items():
+            ctx.setdefault(key, value)
+
         # Inject theme metadata into every template context
         ctx.setdefault("theme",        self)
         ctx.setdefault("theme_name",   self.name)
@@ -344,7 +361,7 @@ class ThemeLoader:
 
         # Lazily inject Settings to avoid circular imports at module load time
         try:
-            from modules.settings.model import Setting
+            from change_password.settings.model import Setting
             namespace["settings"] = Setting
         except ImportError:
             namespace["settings"] = None

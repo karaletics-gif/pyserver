@@ -20,6 +20,7 @@
   <?py end ?>
 
   <form method="POST" action="/register">
+    <input type="hidden" name="_csrf" value="<?= csrf_token ?>">
     <div class="form-group">
       <label for="name">Full name</label>
       <input type="text" id="name" name="name" placeholder="Alice Smith"

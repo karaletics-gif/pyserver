@@ -8,7 +8,11 @@
   <a href="/hooks">Hooks</a>
   <?py if current_user: ?>
     <span style="margin-left:auto; color:var(--muted); font-size:.9rem">
-      Signed in as <strong style="color:var(--text)"><?= current_user ?></strong>
+      Signed in as <strong style="color:var(--text)"><?= current_user.name ?></strong>
     </span>
+    <form method="POST" action="/logout">
+      <input type="hidden" name="_csrf" value="<?= csrf_token ?>">
+      <button type="submit">Sign out</button>
+    </form>
   <?py end ?>
 </nav>

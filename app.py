@@ -9,12 +9,29 @@ Start:  python app.py
 import os, sys, time
 sys.path.insert(0, os.path.dirname(__file__))
 
+_CONFIG_PATH = os.environ.get(
+    "PYSERVER_CONFIG",
+    os.path.join(os.path.dirname(__file__), "instance", "pyserver.json"),
+)
+if __name__ == "__main__" and not os.environ.get("DB_PATH") and not os.path.isfile(_CONFIG_PATH):
+    from core.server import Server
+    from database.installer import InstallerRouter
+
+    Server(InstallerRouter(), host=os.environ.get("HOST", "127.0.0.1"), port=8080).serve()
+    raise SystemExit(0)
+
 # ── Bootstrap DB ──────────────────────────────────────────────────────────────
-from database.orm   import connect
 from database.init_db import init_db
 
-DB_PATH = os.environ.get("DB_PATH", "pyserver.db")
-init_db(DB_PATH, seed=True)
+DB_PATH = os.environ.get("DB_PATH")
+if DB_PATH:
+    init_db(DB_PATH, seed=True)
+else:
+    from database.installer import load_config
+    _database_config = load_config()
+    if _database_config is None:
+        raise RuntimeError("Database is not configured. Run app.py to open the installer.")
+    init_db(_database_config, seed=False)
 
 # ── Core ──────────────────────────────────────────────────────────────────────
 from core.router        import Router
@@ -79,8 +96,19 @@ def _base_ctx(request: Request) -> dict:
         "flash_ok":     None,
         "flash_err":    None,
         "flash_info":   None,
-        "footer_links": [("Home","/"), ("Dashboard","/dashboard"), ("Admin","/admin")],
+        "footer_links": [("Home","/"), ("Dashboard","/dashboard"), ("Admin","/py-admin")],
         "csrf_token":   csrf_token_for(request),
+        "posts":        [],
+        "post":         None,
+        "page":         None,
+        "query":        "",
+        "results":      [],
+        "page_title":   None,
+        "page_message": None,
+        "current_page": 1,
+        "total_pages": None,
+        "prev_page": None,
+        "next_page": None,
     }
     inject_flash(request, ctx)
     return ctx
@@ -139,7 +167,7 @@ def home(request: Request) -> Response:
     posts, total = list_posts(status="published", per_page=6)
     html = theme_render("index", request, {
         "posts": posts, "total_posts": total,
-        "page": 1, "per_page": 6, "total_pages": None,
+        "current_page": 1, "per_page": 6, "total_pages": None,
         "prev_page": None, "next_page": None,
     })
     resp = Response.html(html)
@@ -154,7 +182,7 @@ def post_list(request: Request) -> Response:
     pages = (total + per_page - 1) // per_page
     html  = theme_render("index", request, {
         "posts": posts, "total_posts": total,
-        "page": page, "per_page": per_page, "total_pages": pages,
+        "current_page": page, "per_page": per_page, "total_pages": pages,
         "show_hero": False,
         "prev_page": page - 1 if page > 1 else None,
         "next_page": page + 1 if page < pages else None,
@@ -259,7 +287,7 @@ def edit_post(request: Request, slug: str) -> Response:
         ctx = _editor_ctx(request, post=post, editing=True, error=str(e))
         return Response.html(theme_render("editor", request, ctx))
 
-@router.get("/posts/<slug>/delete")
+@router.post("/posts/<slug>/delete")
 @require_capability("delete_post")
 def delete_post_route(request: Request, slug: str) -> Response:
     try:
@@ -342,7 +370,7 @@ def register_page(request: Request) -> Response:
     resp.set_cookie(sessions.make_cookie(token))
     return resp
 
-@router.get("/logout")
+@router.post("/logout")
 def logout(request: Request) -> Response:
     auth_logout(request)
     resp = Response.redirect("/login")
@@ -407,9 +435,24 @@ def _admin_ctx(request, **extra):
     }
 
 @router.get("/admin")
+def legacy_admin_route(request: Request) -> Response:
+    return Response.redirect("/py-admin")
+
+@router.get("/py-admin")
 @require_capability("manage_users")
 def admin_panel(request: Request) -> Response:
-    resp = Response.html(admin_render("admin.html", request, _admin_ctx(request)))
+    all_posts = QuerySet(Post).filter(content_type="post").all()
+    ctx = _admin_ctx(
+        request,
+        stats={
+            "total": len(all_posts),
+            "published": sum(1 for post in all_posts if post.status == "published"),
+            "drafts": sum(1 for post in all_posts if post.status == "draft"),
+        },
+        recent_posts=sorted(all_posts, key=lambda post: post.created_at, reverse=True)[:8],
+        can_write=can(request.user, "write_post"),
+    )
+    resp = Response.html(admin_render("admin.html", request, ctx))
     clear_flash(resp)
     return resp
 
@@ -418,7 +461,7 @@ def admin_panel(request: Request) -> Response:
 def admin_change_role(request: Request, uid: str) -> Response:
     try:
         update_role(int(uid), request.form.get("role",""), changed_by=request.user)
-        return _redirect_with_flash("/admin", "Role updated.")
+        return _redirect_with_flash("/py-admin#users", "Role updated.")
     except AuthError as e:
         return Response.html(admin_render("admin.html", request,
                                           _admin_ctx(request, flash_err=str(e))))
@@ -434,7 +477,7 @@ def admin_toggle_user(request: Request, uid: str) -> Response:
         msg = f"User '{u.name}' {'activated' if u.active else 'deactivated'}."
     except Exception as e:
         msg = str(e)
-    return _redirect_with_flash("/admin", msg)
+    return _redirect_with_flash("/py-admin#users", msg)
 
 @router.post("/admin/settings")
 @require_capability("manage_settings")
@@ -442,7 +485,7 @@ def admin_save_settings(request: Request) -> Response:
     for key in ("site_name","site_tagline","posts_per_page"):
         val = request.form.get(key)
         if val is not None: Setting.set_value(key, val.strip())
-    return _redirect_with_flash("/admin", "Settings saved.")
+    return _redirect_with_flash("/py-admin#settings", "Settings saved.")
 
 @router.post("/admin/theme")
 @require_capability("manage_settings")
@@ -451,7 +494,7 @@ def admin_switch_theme(request: Request) -> Response:
     try:
         loader.switch(slug)
         Setting.set_value("active_theme", slug)
-        return _redirect_with_flash("/admin", f"Theme switched to '{loader.active.name}'.")
+        return _redirect_with_flash("/py-admin#themes", f"Theme switched to '{loader.active.name}'.")
     except ThemeError as e:
         return Response.html(admin_render("admin.html", request,
                                           _admin_ctx(request, flash_err=f"Theme error: {e}")))
@@ -466,7 +509,7 @@ from blocks.middleware import LoggingMiddleware
 
 auth   = AuthMiddleware(router)
 logged = LoggingMiddleware(auth)
-server = Server(logged, host="0.0.0.0", port=8080)
+server = Server(logged, host=os.environ.get("HOST", "127.0.0.1"), port=8080)
 
 if __name__ == "__main__":
     server.serve()

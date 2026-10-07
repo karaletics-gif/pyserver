@@ -9,28 +9,78 @@ Usage
 
 from __future__ import annotations
 
-from database.orm            import connect
-from change_password.users.model     import User
-from modules.posts.model     import Post
-from change_password.settings.model  import Setting
+import os
+
+from database.orm import connect, connect_mysql, get_connection
+from change_password.users.model import User
+from change_password.content.models import Post, PostRevision
+from change_password.settings.model import Setting
+from modules.auth.passwords import hash_password
 
 
-def init_db(path: str = ":memory:", seed: bool = False) -> None:
+def init_db(path: str | dict = ":memory:", seed: bool = False) -> None:
     """
     Open the database, create all tables, and (optionally) seed sample rows.
     Safe to call on every startup – uses IF NOT EXISTS everywhere.
     """
-    connect(path)
+    if isinstance(path, dict):
+        connect_mysql(path)
+        display_path = "mysql://{}:{}/{}".format(
+            path.get("host", "127.0.0.1"), path.get("port", 3306), path["database"]
+        )
+    else:
+        connect(path)
+        display_path = path
 
     # ── Create tables ──────────────────────────────────────────────────
     User.create_table()
     Post.create_table()
+    _migrate_posts()
+    PostRevision.create_table()
     Setting.create_table()
 
     if seed:
         _seed()
 
-    print(f"  ✔  Database ready: {path}")
+    print(f"  ✔  Database ready: {display_path}")
+
+
+def _migrate_posts() -> None:
+    """Add content-system columns when opening a database from the legacy model."""
+    conn = get_connection()
+    if getattr(conn, "dialect", "sqlite") == "mysql":
+        columns = {
+            row["COLUMN_NAME"]
+            for row in conn.execute(
+                "SELECT COLUMN_NAME FROM information_schema.columns "
+                "WHERE table_schema = DATABASE() AND table_name = ?",
+                ("posts",),
+            ).fetchall()
+        }
+    else:
+        columns = {row["name"] for row in conn.execute("PRAGMA table_info(posts)")}
+    if getattr(conn, "dialect", "sqlite") == "mysql":
+        migrations = {
+            "excerpt": "LONGTEXT NULL",
+            "content_type": "VARCHAR(16) NOT NULL DEFAULT 'post'",
+            "published_at": "VARCHAR(32) NULL",
+            "revision": "BIGINT NOT NULL DEFAULT 1",
+            "meta_title": "LONGTEXT NULL",
+            "meta_desc": "LONGTEXT NULL",
+        }
+    else:
+        migrations = {
+            "excerpt": "TEXT NOT NULL DEFAULT ''",
+            "content_type": "TEXT NOT NULL DEFAULT 'post'",
+            "published_at": "TEXT",
+            "revision": "INTEGER NOT NULL DEFAULT 1",
+            "meta_title": "TEXT NOT NULL DEFAULT ''",
+            "meta_desc": "TEXT NOT NULL DEFAULT ''",
+        }
+    for name, definition in migrations.items():
+        if name not in columns:
+            conn.execute(f'ALTER TABLE posts ADD COLUMN "{name}" {definition}')
+    conn.commit()
 
 
 def _seed() -> None:
@@ -48,59 +98,64 @@ def _seed() -> None:
     if not User.objects.exists():
         alice = User.objects.create(
             name="Alice Admin", email="alice@example.com",
-            password="hashed_pw_alice", role="admin",
+            password=hash_password(os.urandom(32).hex()), role="admin",
             bio="Founder and lead developer.",
         )
         bob = User.objects.create(
             name="Bob Editor", email="bob@example.com",
-            password="hashed_pw_bob", role="editor",
+            password=hash_password(os.urandom(32).hex()), role="editor",
             bio="Content strategist.",
         )
         User.objects.create(
             name="Carol Member", email="carol@example.com",
-            password="hashed_pw_carol", role="member",
+            password=hash_password(os.urandom(32).hex()), role="member",
         )
         User.objects.create(
             name="Dave Inactive", email="dave@example.com",
-            password="hashed_pw_dave", role="member",
+            password=hash_password(os.urandom(32).hex()), role="member",
             active=0,
         )
         print("    → Users seeded")
     else:
-        alice = User.objects.get(email="alice@example.com")
-        bob   = User.objects.get(email="bob@example.com")
+        try:
+            alice = User.objects.get(email="alice@example.com")
+        except User.DoesNotExist:
+            alice = User.objects.create(
+                name="Alice Admin", email="alice@example.com",
+                password=hash_password(os.urandom(32).hex()), role="admin",
+                bio="Founder and lead developer.",
+            )
+        try:
+            bob = User.objects.get(email="bob@example.com")
+        except User.DoesNotExist:
+            bob = User.objects.create(
+                name="Bob Editor", email="bob@example.com",
+                password=hash_password(os.urandom(32).hex()), role="editor",
+                bio="Content strategist.",
+            )
+
+    admin_password = os.environ.get("PYSERVER_ADMIN_PASSWORD")
+    if admin_password:
+        alice.password = hash_password(admin_password)
+        alice.save()
 
     # ── Posts ──────────────────────────────────────────────────────────
     if not Post.objects.exists():
-        Post.objects.create(
-            title="Hello World",
-            slug="hello-world",
-            body="Our first post. Welcome to PyServer!",
-            author_id=alice.id,
-            status="published",
-            views=142,
-        )
-        Post.objects.create(
-            title="Building a Pure-Python Web Server",
-            slug="pure-python-web-server",
-            body="In this post we walk through building an HTTP server from scratch…",
-            author_id=alice.id,
-            status="published",
-            views=89,
-        )
-        Post.objects.create(
-            title="ORM Patterns in Python",
-            slug="orm-patterns-python",
-            body="Active Record vs Data Mapper – which pattern suits Python best?",
-            author_id=bob.id,
-            status="published",
-            views=57,
-        )
-        Post.objects.create(
-            title="Draft: Template Engine Deep-Dive",
-            slug="template-engine-deep-dive",
-            body="Work in progress…",
-            author_id=bob.id,
-            status="draft",
-        )
+        from change_password.content.service import create_post
+
+        for title, body, author_id, slug, views in (
+            ("Hello World", "Our first post. Welcome to PyServer!",
+             alice.id, "hello-world", 142),
+            ("Building a Pure-Python Web Server",
+             "In this post we walk through building an HTTP server from scratch…",
+             alice.id, "pure-python-web-server", 89),
+            ("ORM Patterns in Python",
+             "Active Record vs Data Mapper – which pattern suits Python best?",
+             bob.id, "orm-patterns-python", 57),
+        ):
+            post = create_post(title, body, author_id, status="published", slug=slug)
+            post.views = views
+            post.save()
+        create_post("Draft: Template Engine Deep-Dive", "Work in progress…",
+                    bob.id, status="draft", slug="template-engine-deep-dive")
         print("    → Posts seeded")

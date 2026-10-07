@@ -35,6 +35,8 @@ Protected routes use the decorators from permissions.py:
 from __future__ import annotations
 
 from modules.auth.service import get_current_user
+from blocks.csrf import CSRFError, validate_csrf
+from core.response import Response
 
 
 class AuthMiddleware:
@@ -57,5 +59,10 @@ class AuthMiddleware:
         request.user             = user
         request.is_authenticated = user is not None
         request.is_admin         = user is not None and getattr(user, "role", "") == "admin"
+
+        try:
+            validate_csrf(request)
+        except CSRFError:
+            return Response.html("<h1>403 - Invalid or missing CSRF token</h1>", status=403)
 
         return self._router.dispatch(request)

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><?= page_title or site_name ?></title>
+  <style>body{max-width:760px;margin:0 auto;padding:28px;color:#263c34;background:#fbfcf9;font:17px/1.75 Georgia,serif}header,footer{display:flex;justify-content:space-between;gap:18px;align-items:center;border-bottom:1px solid #cbd8d0;padding:14px 0}footer{border-top:1px solid #cbd8d0;border-bottom:0;margin-top:48px}a{color:#226b52}article{padding:18px 0;border-bottom:1px solid #d8e1db}</style>
+  <?=! theme_head ?>
+</head>
+<body class="<?= theme_body_class ?>">
+<header><a href="/"><strong><?= site_name ?></strong></a><nav><a href="/posts">Posts</a> · <a href="/search">Search</a></nav>
+<?py if current_user: ?><form method="POST" action="/logout"><input type="hidden" name="_csrf" value="<?= csrf_token ?>"><button>Sign out</button></form><?py else: ?><nav><a href="/login">Sign in</a> · <a href="/register">Register</a></nav><?py end ?>
+</header>
+<main>
+<?py if post: ?><article><h1><?= post.title ?></h1><p><?= post.display_excerpt ?></p><div><?= post.body ?></div></article>
+<?py elif page and page.content_type == "page": ?><article><h1><?= page.title ?></h1><div><?= page.body ?></div></article>
+<?py elif query: ?><h1>Search results for “<?= query ?>”</h1><?py if results: ?><?py for result in results: ?><article><h2><a href="/posts/<?= result.slug ?>"><?= result.title ?></a></h2><p><?= result.display_excerpt ?></p></article><?py end ?><?py else: ?><p>No results found.</p><?py end ?>
+<?py elif page_title: ?><h1><?= page_title ?></h1><p><?= page_message ?></p>
+<?py else: ?><h1><?= site_name ?></h1><p><?= site_tagline ?></p><?py if posts: ?><?py for item in posts: ?><article><h2><a href="/posts/<?= item.slug ?>"><?= item.title ?></a></h2><p><?= item.display_excerpt ?></p></article><?py end ?><?py else: ?><p>No published posts yet.</p><?py end ?><?py if total_pages and total_pages > 1: ?><nav><?py if prev_page: ?><a href="/posts?page=<?= prev_page ?>">Previous</a><?py end ?> Page <?= current_page ?> of <?= total_pages ?> <?py if next_page: ?><a href="/posts?page=<?= next_page ?>">Next</a><?py end ?></nav><?py end ?><?py end ?>
+</main>
+<footer><span><?= site_name ?></span><?=! theme_footer ?></footer>
+</body>
+</html>

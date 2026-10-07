@@ -44,7 +44,7 @@ def _build_nav():
         ("Blog",     "/blog",     "always"),
         ("About",    "/about",    "always"),
         ("Dashboard","/dashboard","auth"),
-        ("Admin",    "/admin",    "admin"),
+        ("Admin",    "/py-admin", "admin"),
     ]
 
 

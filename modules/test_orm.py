@@ -8,9 +8,9 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from database.orm           import connect
 from database.init_db       import init_db
-from modules.users.model    import User
-from modules.posts.model    import Post
-from modules.settings.model import Setting
+from change_password.users.model import User
+from change_password.content.models import Post
+from change_password.settings.model import Setting
 
 PASS = "\033[92m✔\033[0m"
 FAIL = "\033[91m✘\033[0m"

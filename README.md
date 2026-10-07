@@ -1,274 +1,145 @@
-# 🚀 PyServer CMS (WordPress-like CMS in Pure Python)
+# PyServer CMS
 
-A fully custom-built Content Management System (CMS) developed using **pure Python (no Django, no Flask)**.
+PyServer is a learning-oriented content management system implemented in Python without Django or Flask. It includes a small HTTP server and router, MySQL/MariaDB persistence, authentication and permissions, a template engine, themed public pages, post revisions, an admin panel, and a JSON API.
 
-This project replicates core concepts of platforms like **WordPress / Laravel / Django**, including:
-- Custom web server
-- Routing system
-- ORM
-- Authentication
-- Template engine
-- Theme system
-- Middleware architecture
+> **User documentation:** [Open the updated PyServer CMS User Manual](docs/PyServer_User_Manual_2026-10-08.docx)
 
----
+## What It Does
 
-# 📌 Features
+- Public homepage, post listing, post detail, search, and CMS page routes.
+- Registration, login, password changes, server-side sessions, and role-based permissions.
+- Draft and published posts, slugs, excerpts, metadata, and revision restore.
+- Admin tools for site settings, theme selection, user roles, and account activation.
+- Default and Minimal themes; theme templates are under `themes/`.
+- JSON endpoints for health, settings, posts, and search.
+- Browser-based first-run setup for database connection and administrator creation.
+- MySQL/MariaDB schema creation and additive migrations for existing post tables.
+- Apache `.htaccess` reverse proxy rules for a domain pointing at the local server.
 
-## 🔐 Authentication System
-- User registration & login
-- Session management
-- Password hashing
-- Role & permission support
+## Requirements
 
-## 🧠 Custom Core Framework
-- HTTP server (built from scratch)
-- Router (GET/POST handling)
-- Request & Response abstraction
+- Python 3.10 or newer.
+- MySQL or MariaDB server with an account allowed to create a database and use it.
+- Python connector dependency installed from `requirements.txt`.
 
-## 🗄️ Database Layer
-- SQLite-based storage
-- Custom ORM (no external libraries)
-- Query abstraction
+## Quick Start
 
-## 🎨 Template Engine
-- PHP-like syntax using Python
-- Dynamic rendering
-- Layout support
+Install the Python dependency and start the application from the repository root:
 
-## 🧱 Middleware System
-- CSRF protection
-- Logging
-- Flash messages
-- Theme loader
+**PowerShell:**
 
-## 🎭 Theme System
-- WordPress-like themes
-- Default + Minimal themes
-- Layout fallback (`index.html`)
-
-## 📝 Content System
-- Post model
-- Revision support (optional)
-- Extendable module structure
-
----
-
-# 📁 Project Structure
-
-```
-pyserver/
-│
-├── app.py                 # Entry point
-│
-├── core/                  # Framework core
-│   ├── server.py
-│   ├── router.py
-│   ├── request.py
-│   └── response.py
-│
-├── database/              # Database layer
-│   ├── orm.py
-│   ├── init_db.py
-│   └── pyserver.db
-│
-├── modules/               # Feature modules
-│   ├── auth/
-│   ├── posts/
-│   └── api/
-│
-├── templates/             # HTML templates
-│
-├── themes/                # Theme system
-│   ├── default/
-│   │   ├── index.html
-│   │   └── theme.py
-│   └── minimal/
-│
-├── blocks/                # Middleware
-│
-├── cookie/                # Sessions & templating
-│
-└── change_password/       # Feature module
+```powershell
+python -m pip install -r requirements.txt
+python app.py
 ```
 
----
-
-# ⚙️ Installation & Setup
-
-## 1️⃣ Clone the Repository
+**Bash:**
 
 ```bash
-git clone <your-repo-url>
-cd pyserver
+python -m pip install -r requirements.txt
+python app.py
 ```
 
-## 2️⃣ Ensure Python Version
+Open <http://localhost:8080> directly for local setup, or open your domain when Apache is proxying to the app. The first-run installer asks for the MySQL/MariaDB host, port, database name, database username, and password. The password can be blank when the database account has no password. The supplied database account must be permitted to create and use the selected database.
 
-```bash
-python --version
-```
+After the database is created and migrations complete, the installer asks for the first administrator's name, email, and password. When installation finishes, sign in at `/py-admin` (for example, `https://your-domain.example/py-admin`). The existing `/admin` URL redirects to `/py-admin`.
 
-👉 Recommended: **Python 3.10+**
+The setup stores database connection details in `instance/pyserver.json`. This file is ignored by Git, has restrictive permissions where supported, and is denied by the supplied Apache rules. Keep it private and back it up securely.
 
-## 3️⃣ Initialize Database
+## Apache Domain Setup
 
-```bash
-python -m database.init_db
-```
+The included `.htaccess` forwards requests to `127.0.0.1:8080`. Point the Apache document root at the repository root, enable `.htaccess` overrides, and enable `mod_rewrite`, `mod_proxy`, and `mod_proxy_http`. The app binds to loopback by default so the Python server is not directly exposed. Configure TLS in Apache before using a public domain.
 
-✔ This will create:
-```
-pyserver.db
-```
-
-## 4️⃣ Run the Application
+Start the app from the repository root:
 
 ```bash
 python app.py
 ```
 
-## 5️⃣ Open in Browser
+For local SQLite-only development and the test suite, set `DB_PATH` explicitly (for example, `DB_PATH=:memory:`); production first-run setup uses MySQL/MariaDB.
 
-```
-http://localhost:8000
-```
+## Main Browser Routes
 
----
+| Route | Purpose | Access |
+| --- | --- | --- |
+| `/` | Homepage | Public |
+| `/posts` | Published post list and pagination | Public |
+| `/posts/<slug>` | View a post | Public when published; signed-in users can view drafts |
+| `/pages/<slug>` | View a published CMS page | Public |
+| `/search?q=<term>` | Search published post titles and bodies | Public |
+| `/register` | Create a member account | Public |
+| `/login` | Sign in | Public |
+| `/logout` | Sign out | POST form action |
+| `/dashboard` | Account dashboard and recent posts | Signed-in |
+| `/posts/new` | Create a post | Editor or Admin |
+| `/posts/<slug>/edit` | Edit a post and review/restore revisions | Editor or Admin |
+| `/py-admin` | WordPress-style admin dashboard, users, settings, and themes | Admin |
+| `/admin` | Compatibility redirect to `/py-admin` | Any visitor |
+| `/account/password` | Change the signed-in account password | Signed-in |
 
-# 🔗 Available Routes
+## Roles
 
-| Route        | Description        |
-|-------------|--------------------|
-| `/`         | Homepage           |
-| `/login`    | Login page         |
-| `/register` | Register page      |
-| `/dashboard`| User dashboard     |
-| `/logout`   | Logout             |
+| Role | Capabilities |
+| --- | --- |
+| Admin | Manage users, roles, settings, themes, and content |
+| Editor | Create, edit, publish, and delete posts |
+| Member | Sign in and use member pages; cannot edit posts |
 
----
+New registrations receive the Member role. An Admin can promote a user from `/py-admin`.
 
-# 🧠 How It Works
+## JSON API
 
-### 🔄 Request Flow
+All API responses use JSON. Public read endpoints include:
 
-```
-Client → Server → Router → Controller → Template → Theme → Response
-```
+| Method and path | Description |
+| --- | --- |
+| `GET /api/health` | Application/database health |
+| `GET /api/settings` | Public site settings |
+| `GET /api/posts?page=1&per_page=10` | Paginated published posts |
+| `GET /api/posts/<slug>` | A post; signed-in users can view drafts |
+| `GET /api/search?q=<term>` | Search published posts; query must be at least two characters |
 
----
+`POST /api/posts`, `PUT` or `PATCH /api/posts/<slug>`, and `DELETE /api/posts/<slug>` require a signed-in session and the corresponding capability. The app uses its `pysess` cookie for API authentication. Unsafe requests with a session must also send a valid CSRF token in `_csrf` or `X-CSRF-Token`.
 
-### 🧩 Architecture Mapping
-
-| PyServer        | Equivalent         |
-|----------------|-------------------|
-| core/server.py | Express/Django     |
-| router.py      | Laravel Routes     |
-| ORM            | Eloquent/Django ORM|
-| templates      | Blade/Jinja        |
-| modules        | Plugins/Apps       |
-
----
-
-# 🎨 Theme System
-
-Each theme must include:
-
-```
-themes/<theme-name>/
- ├── index.html   ✅ REQUIRED
- └── theme.py
-```
-
-👉 `index.html` acts as the base layout.
-
----
-
-# ⚠️ Common Issues & Fixes
-
-## ❌ ModuleNotFoundError
-
-👉 Run modules like:
+Example public request:
 
 ```bash
-python -m database.init_db
+curl "http://localhost:8080/api/posts?page=1&per_page=10"
 ```
 
----
+## Tests
 
-## ❌ Theme Error
-
-```
-Theme 'default' has no index.html
-```
-
-✔ Fix:
-```
-themes/default/index.html must exist
-```
-
----
-
-## ❌ Import Issues
-
-Ensure folders contain:
-
-```
-__init__.py
-```
-
----
-
-# 🧪 Testing
-
-Run test files:
+Run from the repository root:
 
 ```bash
-python test_auth.py
-python test_orm.py
-python test_template.py
+python -m modules.auth.test_auth
+python -m modules.test_orm
+python -m database.test_installer
+python -m change_password.content.test_content
+python -m templates.test_template
+python -m templates.test_integration
+python test_post_editor.py
+python test_final.py
 ```
 
----
+## Project Layout
 
-# 🔥 Future Improvements
+```text
+app.py                         Application entry point and route registration
+core/                          HTTP request, response, router, and server
+database/                      ORM, installer, and database initialization/migrations
+modules/auth/                  Passwords, sessions, roles, and auth services
+modules/api/                   JSON API routes
+change_password/content/       Post models, revisions, slugs, and content service
+templates/                     Internal account/admin templates and partials
+themes/                        Public-facing Default and Minimal themes
+blocks/                        CSRF, flash, logging, and theme loading
+cookie/                        Template engine and hooks
+docs/PyServer_User_Manual_2026-10-08.docx Updated end-user guide
+.htaccess                      Apache reverse proxy and private-file rules
+requirements.txt               MySQL/MariaDB connector dependency
+```
 
-- Admin panel
-- Media upload system
-- Plugin system
-- REST API expansion
-- Caching (Redis)
-- Docker support
-- Deployment pipeline
+## Current Limitations
 
----
-
-# 💡 Learning Purpose
-
-This project is ideal for understanding:
-
-- How frameworks like Django/Laravel work internally
-- How routing, ORM, templating, and middleware are built
-- Backend architecture design
-
----
-
-# 👨‍💻 Author
-
-**Ajeet Kumar**  
-Senior PHP Developer → Transitioning to Python & DevOps 🚀
-
----
-
-# 📜 License
-
-This project is open-source and available under the MIT License.
-
----
-
-# ⭐ Support
-
-If you found this useful:
-- Star the repo ⭐
-- Share with others
-- Build on top of it 🚀
+This is a prototype and learning project, not a hardened production CMS. Sessions are held in memory and are lost when the process restarts. The built-in HTTP server does not provide TLS or production-grade concurrency. Use the Apache proxy only behind TLS, and add persistent session storage, backups, and a reviewed deployment configuration before exposing it to the public internet.

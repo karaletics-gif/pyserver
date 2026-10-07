@@ -6,6 +6,8 @@ __pycache__/
 # Virtual Env
 venv/
 .env
+instance/
+*.tmp
 
 # Database
 *.db

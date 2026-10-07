@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title><?py if editing: ?>Edit post<?py else: ?>New post<?py end ?> · <?= site_name ?></title><style>body{max-width:760px;margin:0 auto;padding:28px;color:#263c34;background:#fbfcf9;font:17px/1.6 Georgia,serif}label{display:block;margin:14px 0 4px}input,textarea{width:100%;padding:10px;border:1px solid #b8c9bf}textarea{min-height:280px}button{padding:9px 14px;margin:12px 8px 12px 0}.error{color:#a12626}header{display:flex;justify-content:space-between;padding-bottom:16px}</style><?=! theme_head ?></head>
+<body class="<?= theme_body_class ?>">
+<header><a href="/"><strong><?= site_name ?></strong></a><a href="/dashboard">Dashboard</a></header>
+<main><h1><?py if editing: ?>Edit post<?py else: ?>New post<?py end ?></h1>
+<?py if error: ?><p class="error"><?= error ?></p><?py end ?><?py if flash_ok: ?><p><?= flash_ok ?></p><?py end ?>
+<form method="POST" action="<?py if editing: ?>/posts/<?= post.slug ?>/edit<?py else: ?>/posts/new<?py end ?>">
+<input type="hidden" name="_csrf" value="<?= csrf_token ?>"><label for="title">Title</label><input id="title" name="title" required value="<?py if editing: ?><?= post.title ?><?py else: ?><?= form_title ?><?py end ?>">
+<label for="slug">Slug</label><input id="slug" name="slug" value="<?py if editing: ?><?= post.slug ?><?py end ?>"><label for="excerpt">Excerpt</label><input id="excerpt" name="excerpt" value="<?py if editing: ?><?= post.excerpt ?><?py end ?>">
+<label for="body">Body</label><textarea id="body" name="body" required><?py if editing: ?><?= post.body ?><?py else: ?><?= form_body ?><?py end ?></textarea><label for="meta_title">Meta title</label><input id="meta_title" name="meta_title" value="<?py if editing: ?><?= post.meta_title ?><?py end ?>"><label for="meta_desc">Meta description</label><input id="meta_desc" name="meta_desc" value="<?py if editing: ?><?= post.meta_desc ?><?py end ?>">
+<button name="action" value="save">Save draft</button><?py if can_publish: ?><button name="action" value="publish">Publish</button><?py if editing and post.is_published: ?><button name="action" value="unpublish">Unpublish</button><?py end ?><?py end ?></form>
+<?py if editing and can_delete: ?><form method="POST" action="/posts/<?= post.slug ?>/delete"><input type="hidden" name="_csrf" value="<?= csrf_token ?>"><button>Delete post</button></form><?py end ?>
+<?py if editing and revisions: ?><?py for revision in revisions: ?><form method="POST" action="/posts/<?= post.slug ?>/restore"><input type="hidden" name="_csrf" value="<?= csrf_token ?>"><input type="hidden" name="revision" value="<?= revision.revision ?>"><button>Restore revision <?= revision.revision ?></button></form><?py end ?><?py end ?>
+</main></body></html>

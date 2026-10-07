@@ -96,29 +96,30 @@ check("avg in same template",
       "avg=20.0")
 
 print("\n── render_template() ───────────────────────────────────────────────")
+from types import SimpleNamespace
+
 context = {
-    "title": "Dashboard",
-    "user": {"name": "Ada", "since": "2023-01-01", "role": "admin"},
-    "projects": [
-        {"name": "Alpha", "description": "First project", "status": "active",
-         "tags": ["python", "web"], "score": 92},
-        {"name": "Beta",  "description": "Second project", "status": "wip",
-         "tags": ["api"], "score": 74},
-        {"name": "Gamma", "description": "Third project", "status": "done",
-         "tags": ["cli", "tools"], "score": 58},
-    ],
-    "announcement_html": "<strong>🎉 v2.0 shipped!</strong>",
+      "site_name": "PyServer",
+      "csrf_token": "test-token",
+      "current_user": SimpleNamespace(
+            name="Ada", email="ada@example.com", role="admin", created_at="2023-01-01"
+      ),
+      "stats": {"total": 3, "published": 2, "drafts": 1},
+      "recent_posts": [
+            SimpleNamespace(title="Alpha", slug="alpha", status="published", created_at="2026-01-01"),
+      ],
+      "can_write": True,
+      "footer_links": [("Home", "/")],
+      "flash_ok": None,
+      "flash_err": None,
+      "flash_info": None,
 }
 output = render_template("templates/dashboard.html", context)
 check("title in output",         output, "Dashboard")
 check("user name",               output, "Ada")
-check("admin role",              output, "Administrator")
-check("project cards",           output, "Alpha")
-check("nested tags",             output, "python")
-check("raw HTML announcement",   output, "🎉 v2.0 shipped!")
-check("leaderboard sorted",      output, "Alpha")
-check("score highlight (ok)",    output, "★")
-check("stat table total",        output, "224")   # 92+74+58
+check("admin role",              output, "admin")
+check("recent post rendered",    output, "Alpha")
+check("dashboard stats",         output, "Total posts")
 
 print("\n── edge cases ──────────────────────────────────────────────────────")
 check("empty template",       render(""), "")

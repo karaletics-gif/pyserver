@@ -1,0 +1,9 @@
+Options -Indexes
+
+<FilesMatch "^(\.env|\.htaccess|pyserver\.db(?:-shm|-wal)?|.*\.json)$">
+    Require all denied
+</FilesMatch>
+
+RewriteEngine On
+RewriteCond %{REQUEST_URI} !^/\.well-known/
+RewriteRule ^(.*)$ http://127.0.0.1:8080/$1 [P,L]

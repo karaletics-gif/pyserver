@@ -12,11 +12,11 @@ import app as _app   # single import
 from urllib.parse import urlencode
 from core.request   import Request
 from core.response  import Response
-from modules.users.model     import User
+from change_password.users.model import User
 from modules.auth.passwords  import hash_password
-from modules.content.models  import Post, PostRevision
-from modules.content.service import create_post, get_revisions
-from modules.settings.model  import Setting
+from change_password.content.models import Post, PostRevision
+from change_password.content.service import create_post, get_revisions
+from change_password.settings.model import Setting
 from database.orm            import QuerySet
 
 Post.create_table()
@@ -37,6 +37,14 @@ def section(title: str):
 
 def go(method: str, path: str, form=None, cookie: str = ""):
     h = {}; b = b""
+    if cookie and method.upper() not in ("GET", "HEAD", "OPTIONS", "TRACE"):
+        from blocks.csrf import csrf_token_for
+        from core.request import Request as _Request
+        csrf = csrf_token_for(_Request("GET", "/", {"Cookie": f"pysess={cookie}"}))
+        if isinstance(form, dict):
+            form = {**form, "_csrf": csrf}
+        else:
+            h["X-CSRF-Token"] = csrf
     if form and isinstance(form, dict):
         b = urlencode(form).encode()
         h["Content-Type"]   = "application/x-www-form-urlencoded"
@@ -145,7 +153,7 @@ check("error message shown",     "invalid" in r.body.lower())
 r = go("GET", "/login", cookie=a_sess)
 check("logged-in GET /login → 302", r.status == 302)
 
-r = go("GET", "/logout", cookie=a_sess)
+r = go("POST", "/logout", cookie=a_sess)
 check("logout 302",              r.status == 302)
 check("clears cookie",           any("Max-Age=0" in c for c in getattr(r, "_cookies", [])))
 
@@ -170,17 +178,18 @@ section("Auth: protection and capabilities")
 r = go("GET", "/dashboard")
 check("dashboard → 302 anon",    r.status == 302)
 
-r = go("GET", "/admin")
+r = go("GET", "/py-admin")
 check("admin → 401 anon",        r.status == 401)
 
-r = go("GET", "/admin", cookie=m_sess)
+r = go("GET", "/py-admin", cookie=m_sess)
 check("admin → 403 member",      r.status == 403)
 
 r = go("GET", "/dashboard", cookie=m_sess)
 check("dashboard 200 member",    r.status == 200)
 
-r = go("GET", "/admin", cookie=a_sess)
+r = go("GET", "/py-admin", cookie=a_sess)
 check("admin 200 admin",         r.status == 200)
+check("admin page has sidebar",   "Administration navigation" in r.body)
 
 r = go("GET", "/posts/new", cookie=m_sess)
 check("posts/new → 403 member",  r.status == 403)
@@ -196,7 +205,7 @@ check("create draft → 302",      r.status == 302)
 new_slug = r.headers.get("Location", "").split("/posts/")[1].split("/edit")[0]
 check("slug in redirect",        bool(new_slug) and new_slug != "")
 
-from modules.content.service import get_post_by_slug
+from change_password.content.service import get_post_by_slug
 new_post = get_post_by_slug(new_slug)
 check("post saved to DB",        new_post.title == "Test Post")
 check("status = draft",          new_post.status == "draft")
@@ -224,14 +233,14 @@ check("restore → 302",           r.status == 302)
 
 # Delete
 throwaway = create_post("Throwaway", "<p>x</p>", author_id=editor.id)
-r = go("GET", f"/posts/{throwaway.slug}/delete", cookie=e_sess)
+r = go("POST", f"/posts/{throwaway.slug}/delete", cookie=e_sess)
 check("delete → 302",            r.status == 302)
 r = go("GET", f"/posts/{throwaway.slug}")
 check("deleted post → 404",      r.status == 404)
 
 # ─────────────────────────────────────────────────────────────────────────────
 section("Flash messages")
-from core.flash import set_flash, get_flash, inject_flash
+from blocks.flash import set_flash, get_flash, inject_flash
 from core.response import Response as _Resp
 
 resp = _Resp.redirect("/test")
@@ -257,7 +266,7 @@ check("setting persisted",       Setting.get_value("site_name") == "TestSite")
 
 # Flash from delete
 delete_me = create_post("Delete Me", "<p>x</p>", author_id=admin.id)
-r = go("GET", f"/posts/{delete_me.slug}/delete", cookie=a_sess)
+r = go("POST", f"/posts/{delete_me.slug}/delete", cookie=a_sess)
 check("delete flash set",        flash_cookie(r) is not None)
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -339,7 +348,7 @@ check("short query → 400",       r.status == 400)
 
 # ─────────────────────────────────────────────────────────────────────────────
 section("CSRF protection")
-from core.csrf import csrf_token_for, validate_csrf, CSRFError
+from blocks.csrf import csrf_token_for, validate_csrf, CSRFError
 
 # Use a real session (a_sess) for CSRF tests
 class _Req:
@@ -411,7 +420,7 @@ check("path traversal blocked",  r.status == 404)
 
 # ─────────────────────────────────────────────────────────────────────────────
 section("Admin panel")
-r = go("GET", "/admin", cookie=a_sess)
+r = go("GET", "/py-admin", cookie=a_sess)
 check("admin panel 200",         r.status == 200)
 check("has theme switcher",      "Themes" in r.body)
 check("has users table",         "Users" in r.body)
@@ -453,7 +462,7 @@ check("mismatch → error",        "match" in r.body.lower() or "error" in r.bod
 
 # ─────────────────────────────────────────────────────────────────────────────
 section("Logger")
-from core.logger import get_logger, Logger
+from blocks.logger import get_logger, Logger
 log = get_logger("test_final")
 check("get_logger returns Logger", isinstance(log, Logger))
 log.info("test info message", key="val")
@@ -468,7 +477,7 @@ section("Pagination")
 for i in range(8):
     create_post(f"Page Post {i}", f"<p>body {i}</p>", author_id=admin.id, status="published")
 
-from modules.settings.model import Setting
+from change_password.settings.model import Setting
 Setting.set_value("posts_per_page", "3")
 
 r = go("GET", "/posts?page=1")
@@ -508,7 +517,7 @@ def broken_route(request):
 r = go("GET", "/test-500-route-xyz")
 check("500 returns 500 status",  r.status == 500)
 check("500 page has error text", "500" in r.body or "error" in r.body.lower())
-check("debug shows traceback",   "RuntimeError" in r.body or "traceback" in r.body.lower())
+check("500 response omits traceback", "Traceback" not in r.body)
 del _os.environ["DEBUG"]
 
 # ─────────────────────────────────────────────────────────────────────────────

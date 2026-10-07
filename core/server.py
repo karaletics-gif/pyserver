@@ -42,6 +42,8 @@ class _Handler(http.server.BaseHTTPRequestHandler):
         self.send_response(status, reason)
         for k, v in headers.items():
             self.send_header(k, v)
+        for cookie in response._cookies:
+            self.send_header("Set-Cookie", cookie)
         self.end_headers()
         self.wfile.write(body_bytes)
 

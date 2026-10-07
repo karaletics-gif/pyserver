@@ -25,6 +25,10 @@ def check(label, cond, detail=""):
 def dispatch(method, path, form=None, cookie=""):
     headers = {}
     body    = b""
+    if cookie and method.upper() not in ("GET", "HEAD", "OPTIONS", "TRACE"):
+        from blocks.csrf import csrf_token_for
+        csrf = csrf_token_for(Request("GET", "/", {"Cookie": cookie}, b""))
+        form = {**(form or {}), "_csrf": csrf}
     if form:
         body = urlencode(form).encode()
         headers["Content-Type"]   = "application/x-www-form-urlencoded"
@@ -41,7 +45,7 @@ def session_cookie(resp):
     return None
 
 # ── Seed a real admin user directly via ORM ───────────────────────────────────
-from modules.users.model  import User
+from change_password.users.model import User
 from modules.auth.passwords import hash_password
 from database.orm import QuerySet
 
@@ -55,8 +59,8 @@ print("\n── Public pages ─────────────────
 
 r = dispatch("GET", "/")
 check("home 200",             r.status == 200)
-check("home: feature grid",   "ORM" in r.body)
-check("home: CTA buttons",    "register" in r.body.lower() or "Get started" in r.body)
+check("home: site title",     "PyServer" in r.body)
+check("home: seeded content", "Hello World" in r.body)
 
 r = dispatch("GET", "/login")
 check("login page 200",       r.status == 200)
@@ -73,8 +77,10 @@ r = dispatch("GET", "/dashboard")
 check("dashboard → 302",      r.status == 302)
 check("redirect to /login",   r.headers.get("Location") == "/login")
 
-r = dispatch("GET", "/admin")
+r = dispatch("GET", "/py-admin")
 check("admin → 401",          r.status == 401)
+r = dispatch("GET", "/admin")
+check("legacy admin URL redirects", r.status == 302 and r.headers.get("Location") == "/py-admin")
 
 r = dispatch("GET", "/account/password")
 check("account/pw → 302",     r.status == 302)
@@ -117,7 +123,7 @@ check("error text: invalid",        "invalid" in r.body.lower())
 r = dispatch("GET", "/login", cookie=f"pysess={sess1}")
 check("already-logged-in → 302",   r.status == 302)
 
-r = dispatch("GET", "/logout", cookie=f"pysess={sess1}")
+r = dispatch("POST", "/logout", cookie=f"pysess={sess1}")
 check("logout → 302",              r.status == 302)
 check("session cookie cleared",    any("Max-Age=0" in c for c in getattr(r, "_cookies", [])))
 
@@ -177,7 +183,7 @@ check("admin login → 302",     r.status == 302)
 admin_sess = session_cookie(r)
 check("admin session set",     admin_sess is not None)
 
-r = dispatch("GET", "/admin", cookie=f"pysess={admin_sess}")
+r = dispatch("GET", "/py-admin", cookie=f"pysess={admin_sess}")
 check("admin panel 200",            r.status == 200)
 check("shows users table",          "Users" in r.body)
 check("shows settings form",        "Site" in r.body or "settings" in r.body.lower())
@@ -186,7 +192,7 @@ check("shows role selects",         "role" in r.body.lower())
 # Member cannot reach admin
 r = dispatch("POST", "/login", form={"email":"jane@test.com","password":"newjane5678"})
 mem_sess = session_cookie(r)
-r = dispatch("GET", "/admin", cookie=f"pysess={mem_sess}")
+r = dispatch("GET", "/py-admin", cookie=f"pysess={mem_sess}")
 check("member → 403",               r.status == 403)
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -199,7 +205,7 @@ r = dispatch("POST", "/admin/settings", cookie=f"pysess={admin_sess}", form={
 })
 check("save settings → 302",  r.status == 302)
 
-from modules.settings.model import Setting
+from change_password.settings.model import Setting
 check("site_name persisted",  Setting.get_value("site_name") == "IntegrationSite")
 check("posts_per_page saved", Setting.get_value("posts_per_page") == "5")
 
@@ -209,8 +215,8 @@ print("\n── Admin: role change ───────────────
 jane_db = QuerySet(User).get(email="jane@test.com")
 r = dispatch("POST", f"/admin/users/{jane_db.id}/role",
              cookie=f"pysess={admin_sess}", form={"role": "editor"})
-check("role change → 200",         r.status == 200)
-check("flash ok in response",      "updated" in r.body.lower() or "role" in r.body.lower())
+check("role change → 302",         r.status == 302)
+check("role change sets flash",    any("pyflash=" in c for c in getattr(r, "_cookies", [])))
 jane_fresh = QuerySet(User).get(id=jane_db.id)
 check("role persisted as editor",  jane_fresh.role == "editor")
 
