@@ -34,6 +34,28 @@ from database.orm import Model, Field
 class Post(Model):
     _table = "posts"
 
+    post_author = Field("INTEGER", nullable=False, default=0, index=True)
+    post_date = Field("TEXT", nullable=False, default="")
+    post_date_gmt = Field("TEXT", nullable=False, default="")
+    post_content = Field("TEXT", nullable=False, default="")
+    post_title = Field("TEXT", nullable=False, default="")
+    post_excerpt = Field("TEXT", nullable=False, default="")
+    post_status = Field("TEXT", nullable=False, default="draft", index=True)
+    comment_status = Field("TEXT", nullable=False, default="open")
+    ping_status = Field("TEXT", nullable=False, default="open")
+    post_password = Field("TEXT", nullable=False, default="")
+    post_name = Field("TEXT", nullable=False, default="")
+    to_ping = Field("TEXT", nullable=False, default="")
+    pinged = Field("TEXT", nullable=False, default="")
+    post_modified = Field("TEXT", nullable=False, default="")
+    post_modified_gmt = Field("TEXT", nullable=False, default="")
+    post_content_filtered = Field("TEXT", nullable=False, default="")
+    guid = Field("TEXT", nullable=False, default="")
+    menu_order = Field("INTEGER", nullable=False, default=0)
+    post_type = Field("TEXT", nullable=False, default="post", index=True)
+    post_mime_type = Field("TEXT", nullable=False, default="")
+    comment_count = Field("INTEGER", nullable=False, default=0)
+
     # Core content
     title        = Field("TEXT",    nullable=False)
     slug         = Field("TEXT",    nullable=False, unique=True, index=True)
@@ -55,6 +77,21 @@ class Post(Model):
 
     # Analytics
     views        = Field("INTEGER", nullable=False, default=0)
+
+    def save(self) -> None:
+        self.post_author = self.author_id or 0
+        self.post_date = self.post_date or self.created_at
+        self.post_date_gmt = self.post_date_gmt or self.post_date
+        self.post_content = self.body
+        self.post_title = self.title
+        self.post_excerpt = self.excerpt or ""
+        self.post_status = self.status
+        self.post_name = self.slug
+        self.post_modified = self.updated_at or self.post_date
+        self.post_modified_gmt = self.post_modified
+        self.post_type = self.content_type
+        self.guid = self.guid or self.slug
+        super().save()
 
     # ── Computed properties ───────────────────────────────────────────
 

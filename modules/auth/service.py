@@ -15,7 +15,7 @@ from __future__ import annotations
 
 from database.orm             import QuerySet
 from change_password.users.model      import User
-from modules.auth.passwords   import hash_password, verify_password, needs_rehash
+from modules.auth.passwords   import hash_password, verify_password, needs_rehash, validate_password
 from modules.auth.permissions import is_valid_role, ROLE_HIERARCHY
 from modules.auth.sessions    import sessions
 
@@ -38,6 +38,7 @@ def register(
     *,
     role:     str = "member",
     bio:      str = "",
+    allow_weak_password: bool = False,
 ) -> User:
     """
     Create and return a new User.
@@ -52,8 +53,10 @@ def register(
         raise RegistrationError("Name is required.")
     if not email or "@" not in email:
         raise RegistrationError("A valid email address is required.")
-    if len(password) < 8:
-        raise RegistrationError("Password must be at least 8 characters.")
+    try:
+        validate_password(password, allow_weak=allow_weak_password)
+    except ValueError as exc:
+        raise RegistrationError(str(exc)) from exc
     if not is_valid_role(role):
         raise RegistrationError(f"Unknown role {role!r}.")
 
@@ -165,6 +168,8 @@ def change_password(
     user_id:      int,
     old_password: str,
     new_password: str,
+    *,
+    allow_weak_password: bool = False,
 ) -> User:
     """
     Change a user's password after verifying the old one.
@@ -177,8 +182,10 @@ def change_password(
 
     if not verify_password(old_password, user.password):
         raise AuthError("Current password is incorrect.")
-    if len(new_password) < 8:
-        raise AuthError("New password must be at least 8 characters.")
+    try:
+        validate_password(new_password, allow_weak=allow_weak_password)
+    except ValueError as exc:
+        raise AuthError(str(exc)) from exc
 
     user.password = hash_password(new_password)
     user.save()

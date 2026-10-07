@@ -6,13 +6,21 @@ from database.orm import Model, Field
 
 
 class Setting(Model):
-    _table = "settings"
+    _table = "options"
 
+    option_name = Field("TEXT", nullable=False, unique=True, default="")
+    option_value = Field("TEXT")
+    autoload = Field("TEXT", nullable=False, default="yes")
     key        = Field("TEXT",    nullable=False, unique=True, index=True)
     value      = Field("TEXT")
     value_type = Field("TEXT",    nullable=False, default="string")  # string | int | bool | json
     group      = Field("TEXT",    nullable=False, default="general")
     label      = Field("TEXT")
+
+    def save(self) -> None:
+        self.option_name = self.key
+        self.option_value = self.value
+        super().save()
 
     # ── Typed getters ──────────────────────────────────────────────────
 

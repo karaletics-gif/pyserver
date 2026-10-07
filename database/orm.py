@@ -37,6 +37,8 @@ import threading
 from datetime import datetime
 from typing import Any, Iterator
 
+TABLE_PREFIX = "py_"
+
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Connection pool  (one connection per db path, thread-safe)
@@ -118,10 +120,13 @@ def get_connection(path: str | None = None):
 
 
 class _MySQLRow(dict):
+    def __init__(self, row):
+        super().__init__((str(key).lower(), value) for key, value in row.items())
+
     def __getitem__(self, key):
         if isinstance(key, int):
             return tuple(self.values())[key]
-        return super().__getitem__(key)
+        return super().__getitem__(str(key).lower())
 
 
 class _MySQLCursor:
@@ -515,6 +520,8 @@ class ModelMeta(type):
         if "_table" not in namespace:
             table = _to_snake(name) + "s"
             namespace["_table"] = table
+        if not namespace["_table"].startswith(TABLE_PREFIX):
+            namespace["_table"] = TABLE_PREFIX + namespace["_table"]
 
         cls = super().__new__(mcs, name, bases, namespace)
 
@@ -665,7 +672,7 @@ class Model(metaclass=ModelMeta):
 
     @classmethod
     def _from_row(cls, row: sqlite3.Row) -> Model:
-        return cls(**dict(row))
+        return cls(**{str(key).lower(): value for key, value in dict(row).items()})
 
     def to_dict(self) -> dict:
         return {name: getattr(self, name, None) for name in self._fields}

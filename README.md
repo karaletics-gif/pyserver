@@ -13,7 +13,8 @@ PyServer is a learning-oriented content management system implemented in Python 
 - Default and Minimal themes; theme templates are under `themes/`.
 - JSON endpoints for health, settings, posts, and search.
 - Browser-based first-run setup for database connection and administrator creation.
-- MySQL/MariaDB schema creation and additive migrations for existing post tables.
+- WordPress-style content, user, metadata, taxonomy, comment, option, and link tables, all using the `py_` prefix.
+- Additive migrations from the app's old tables and existing `wp_` tables, with source data retained.
 - Apache `.htaccess` reverse proxy rules for a domain pointing at the local server.
 
 ## Requirements
@@ -42,7 +43,9 @@ python app.py
 
 Open <http://localhost:8080> directly for local setup, or open your domain when Apache is proxying to the app. The first-run installer asks for the MySQL/MariaDB host, port, database name, database username, and password. The password can be blank when the database account has no password. The supplied database account must be permitted to create and use the selected database.
 
-After the database is created and migrations complete, the installer asks for the first administrator's name, email, and password. When installation finishes, sign in at `/py-admin` (for example, `https://your-domain.example/py-admin`). The existing `/admin` URL redirects to `/py-admin`.
+After the database is created and migrations complete, the installer asks for the first administrator's name, email, and password. The installer stores a PBKDF2 password hash compatible with the login service. When installation finishes, sign in at `/py-admin` (for example, `https://your-domain.example/py-admin`). The existing `/admin` URL redirects to `/py-admin`.
+
+Strong passwords are required by default: at least 12 characters and at least three of lowercase, uppercase, numbers, and symbols. Registration, first-admin setup, and password-change forms include an unchecked confirmation checkbox that allows a password of at least 8 characters when the user explicitly accepts the risk. Imported WordPress portable phpass passwords are accepted on first login and transparently upgraded to PBKDF2.
 
 The setup stores database connection details in `instance/pyserver.json`. This file is ignored by Git, has restrictive permissions where supported, and is denied by the supplied Apache rules. Keep it private and back it up securely.
 
@@ -87,6 +90,21 @@ For local SQLite-only development and the test suite, set `DB_PATH` explicitly (
 
 New registrations receive the Member role. An Admin can promote a user from `/py-admin`.
 
+## Database Tables
+
+Application tables use the `py_` prefix. The main tables correspond to the supplied WordPress-style schema:
+
+| Table | Purpose |
+| --- | --- |
+| `py_users`, `py_usermeta` | User accounts and extensible user metadata |
+| `py_posts`, `py_postmeta`, `py_post_revisions` | Posts, pages, content metadata, and revision history |
+| `py_terms`, `py_term_taxonomy`, `py_term_relationships`, `py_termmeta` | Categories/tags and object relationships |
+| `py_comments`, `py_commentmeta` | Comments and comment metadata |
+| `py_options` | Site options/settings |
+| `py_links` | Link records |
+
+The migration renames this project's legacy `users`, `posts`, `post_revisions`, and `settings` tables to their `py_` names. Existing `wp_` tables are renamed to `py_` where a target table does not already exist, then compatibility columns are added and WordPress user/post/option fields are copied into the fields used by this CMS. WordPress capability metadata maps administrator/editor users to the corresponding PyServer roles.
+
 ## JSON API
 
 All API responses use JSON. Public read endpoints include:
@@ -115,6 +133,7 @@ Run from the repository root:
 python -m modules.auth.test_auth
 python -m modules.test_orm
 python -m database.test_installer
+python -m database.test_wp_schema
 python -m change_password.content.test_content
 python -m templates.test_template
 python -m templates.test_integration
@@ -127,7 +146,7 @@ python test_final.py
 ```text
 app.py                         Application entry point and route registration
 core/                          HTTP request, response, router, and server
-database/                      ORM, installer, and database initialization/migrations
+database/                      ORM, installer, WordPress schema, and migrations
 modules/auth/                  Passwords, sessions, roles, and auth services
 modules/api/                   JSON API routes
 change_password/content/       Post models, revisions, slugs, and content service

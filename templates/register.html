@@ -34,9 +34,10 @@
     <div class="form-group">
       <label for="password">Password</label>
       <input type="password" id="password" name="password"
-             placeholder="At least 8 characters" required autocomplete="new-password">
-      <p class="hint">Minimum 8 characters.</p>
+             placeholder="12+ characters with mixed character types" required autocomplete="new-password">
+      <p class="hint">Use at least 12 characters with a mix of character types, or explicitly opt into a weaker password below.</p>
     </div>
+    <label class="hint"><input type="checkbox" name="allow_weak_password" value="1"<?py if allow_weak_password: ?> checked<?py end ?>> I understand the risk and want to use a weaker password (minimum 8 characters).</label>
     <button type="submit" style="width:100%; margin-top:8px">Create account</button>
   </form>
 

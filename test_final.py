@@ -37,6 +37,10 @@ def section(title: str):
 
 def go(method: str, path: str, form=None, cookie: str = ""):
     h = {}; b = b""
+    if path == "/register" and isinstance(form, dict):
+        form = {**form, "allow_weak_password": "1"}
+    if path == "/account/password" and isinstance(form, dict):
+        form = {**form, "allow_weak_password": "1"}
     if cookie and method.upper() not in ("GET", "HEAD", "OPTIONS", "TRACE"):
         from blocks.csrf import csrf_token_for
         from core.request import Request as _Request
@@ -190,6 +194,8 @@ check("dashboard 200 member",    r.status == 200)
 r = go("GET", "/py-admin", cookie=a_sess)
 check("admin 200 admin",         r.status == 200)
 check("admin page has sidebar",   "Administration navigation" in r.body)
+check("admin dashboard widgets",  "Quick draft" in r.body and "Recent comments" in r.body)
+check("admin navigation sections", "Appearance" in r.body and "Tools" in r.body)
 
 r = go("GET", "/posts/new", cookie=m_sess)
 check("posts/new → 403 member",  r.status == 403)

@@ -13,11 +13,30 @@ from pathlib import Path
 from core.request import Request
 from core.response import Response
 from core.router import Router
+from modules.auth.passwords import hash_password, validate_password
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 CONFIG_PATH = Path(os.environ.get("PYSERVER_CONFIG", BASE_DIR / "instance" / "pyserver.json"))
 _DATABASE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
+
+
+def create_admin_user(name: str, email: str, password: str, allow_weak: bool = False):
+    """Persist the first admin with the same model/hash contract used by login."""
+    from change_password.users.model import User
+    from database.orm import QuerySet
+
+    name = name.strip()
+    email = email.strip().lower()
+    if not name or "@" not in email:
+        raise ValueError("Enter an administrator name and valid email address.")
+    validate_password(password, allow_weak=allow_weak)
+    if QuerySet(User).filter(email=email).exists():
+        raise ValueError("That email address is already registered.")
+    return User.objects.create(
+        name=name, email=email, password=hash_password(password),
+        role="admin", active=1,
+    )
 
 
 def load_config() -> dict | None:
@@ -178,8 +197,9 @@ class InstallerRouter:
 <form method="post" action="/install/admin"><input type="hidden" name="_csrf" value="{csrf}">
 <label for="admin_name">Administrator name</label><input id="admin_name" name="admin_name" autocomplete="name" required>
 <label for="admin_email">Administrator email</label><input id="admin_email" name="admin_email" type="email" autocomplete="email" required>
-<label for="admin_password">Administrator password</label><input id="admin_password" name="admin_password" type="password" autocomplete="new-password" minlength="12" required>
-<label for="admin_password_confirm">Confirm password</label><input id="admin_password_confirm" name="admin_password_confirm" type="password" autocomplete="new-password" minlength="12" required>
+<label for="admin_password">Administrator password</label><input id="admin_password" name="admin_password" type="password" autocomplete="new-password" required>
+<label for="admin_password_confirm">Confirm password</label><input id="admin_password_confirm" name="admin_password_confirm" type="password" autocomplete="new-password" required>
+<label style="display:flex;align-items:center;gap:9px;font-weight:400"><input type="checkbox" name="allow_weak_password" value="1" style="width:auto;min-height:0"> I understand the risk and want to use a weaker password</label>
 <button type="submit">Create administrator and finish</button></form></section>"""
         return self._response(request, _layout("Create administrator", fields), session=session)
 
@@ -195,24 +215,18 @@ class InstallerRouter:
         email = request.form.get("admin_email", "").strip().lower()
         password = request.form.get("admin_password", "")
         confirmation = request.form.get("admin_password_confirm", "")
+        allow_weak = request.form.get("allow_weak_password") == "1"
         if not name or "@" not in email:
             return self._admin_error(request, session, "Enter an administrator name and valid email address.")
-        if len(password) < 12:
-            return self._admin_error(request, session, "Use an administrator password with at least 12 characters.")
         if password != confirmation:
             return self._admin_error(request, session, "The password confirmation does not match.")
+        try:
+            validate_password(password, allow_weak=allow_weak)
+        except ValueError as exc:
+            return self._admin_error(request, session, str(exc))
 
         try:
-            from change_password.users.model import User
-            from database.orm import QuerySet
-            from modules.auth.passwords import hash_password
-
-            if QuerySet(User).filter(email=email).exists():
-                return self._admin_error(request, session, "That email address is already registered.")
-            User.objects.create(
-                name=name, email=email, password=hash_password(password),
-                role="admin", active=1,
-            )
+            create_admin_user(name, email, password, allow_weak=allow_weak)
             self._write_config(config)
         except Exception as exc:
             return self._admin_error(request, session, f"Could not finish installation: {exc}")
@@ -225,12 +239,14 @@ class InstallerRouter:
 
     def _admin_error(self, request: Request, session: str, message: str) -> Response:
         csrf = html.escape(self._tokens.get(session, ""), quote=True)
+        weak_checked = " checked" if request.form.get("allow_weak_password") == "1" else ""
         fields = f"""<section class="panel"><p>Database created and migrations completed. Create the first administrator account.</p>
 <form method="post" action="/install/admin"><input type="hidden" name="_csrf" value="{csrf}">
 <label>Administrator name</label><input name="admin_name" value="{html.escape(request.form.get('admin_name',''), quote=True)}" required>
 <label>Administrator email</label><input name="admin_email" type="email" value="{html.escape(request.form.get('admin_email',''), quote=True)}" required>
-<label>Administrator password</label><input name="admin_password" type="password" minlength="12" required>
-<label>Confirm password</label><input name="admin_password_confirm" type="password" minlength="12" required>
+<label>Administrator password</label><input name="admin_password" type="password" required>
+<label>Confirm password</label><input name="admin_password_confirm" type="password" required>
+<label style="display:flex;align-items:center;gap:9px;font-weight:400"><input type="checkbox" name="allow_weak_password" value="1" style="width:auto;min-height:0"{weak_checked}> I understand the risk and want to use a weaker password</label>
 <button>Create administrator and finish</button></form></section>"""
         return self._response(request, _layout("Create administrator", fields, message), status=400, session=session)
 

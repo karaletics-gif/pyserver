@@ -29,6 +29,7 @@
     .notice { margin: 0 0 16px; padding: 11px 14px; border-left: 4px solid #176b58; background: #e3f0eb }
     .notice.error { border-color: #b74232; background: #fff0ed }
     .stats { display: grid; grid-template-columns: repeat(3, minmax(130px, 1fr)); gap: 14px; margin-bottom: 20px }
+    .dashboard-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:18px }
     .stat { padding: 16px 18px; background: white; border: 1px solid #d7dcde; border-radius: 3px }
     .stat strong { display: block; font-size: 24px; color: #176b58 }
     .section { margin: 0 0 20px; padding: 20px; background: white; border: 1px solid #d7dcde; border-radius: 3px; scroll-margin-top: 16px }
@@ -44,6 +45,7 @@
     .inline-form button { white-space: nowrap }
     .theme-row { display: flex; justify-content: space-between; align-items: center; gap: 14px; padding: 12px 0; border-bottom: 1px solid #e1e5e6 }
     @media (max-width: 760px) { .frame { grid-template-columns: 1fr } .sidebar { display: flex; flex-wrap: wrap; padding: 6px; gap: 3px } .side-label { width: 100%; padding: 5px 8px } .side-link { padding: 8px 10px; border-left: 0; border-bottom: 2px solid transparent } .side-link:hover, .side-link.active { border-bottom-color: #d16c45 } .content { padding: 20px 12px } }
+    @media (max-width: 900px) { .dashboard-grid { grid-template-columns:1fr } }
     @media (max-width: 520px) { .topbar { gap: 10px; padding: 0 10px } .topbar .top-user { display: none } .stats { grid-template-columns: 1fr } .section { padding: 14px; overflow-x: auto } .page-head { align-items: flex-start; flex-direction: column } }
   </style>
 </head>
@@ -60,11 +62,14 @@
     <div class="side-label">Workspace</div>
     <a class="side-link active" href="#overview">Dashboard</a>
     <a class="side-link" href="#content">Posts</a>
+    <a class="side-link" href="#pages">Pages</a>
+    <a class="side-link" href="#comments">Comments</a>
     <?py if can_write: ?><a class="side-link" href="/posts/new">Add post</a><?py end ?>
     <div class="side-label">Manage</div>
     <a class="side-link" href="#users">Users</a>
+    <a class="side-link" href="#appearance">Appearance</a>
     <a class="side-link" href="#settings">Settings</a>
-    <a class="side-link" href="#themes">Themes</a>
+    <a class="side-link" href="#tools">Tools</a>
   </aside>
   <main class="content">
     <div class="page-head"><div><p class="subtle">Site administration</p><h1>Dashboard</h1></div><a class="button" href="/posts/new">＋ New post</a></div>
@@ -75,8 +80,12 @@
       <div class="stat"><strong><?= stats["total"] ?></strong><span>Total posts</span></div>
       <div class="stat"><strong><?= stats["published"] ?></strong><span>Published</span></div>
       <div class="stat"><strong><?= stats["drafts"] ?></strong><span>Drafts</span></div>
+      <div class="stat"><strong><?= stats["pages"] ?></strong><span>Pages</span></div>
+      <div class="stat"><strong><?= stats["users"] ?></strong><span>Users</span></div>
+      <div class="stat"><strong><?= stats["comments"] ?></strong><span>Comments</span></div>
     </section>
 
+    <div class="dashboard-grid">
     <section class="section" id="content">
       <h2>Recent posts</h2>
       <?py if recent_posts: ?>
@@ -84,6 +93,28 @@
         <?py for post in recent_posts: ?><tr><td><?= post.title ?></td><td><?= post.status ?></td><td><?= post.updated_at[:10] ?></td><td><a href="/posts/<?= post.slug ?>/edit">Edit</a></td></tr><?py end ?>
       </tbody></table>
       <?py else: ?><p class="subtle">No posts yet.</p><?py end ?>
+    </section>
+
+    <section class="section" id="quick-draft">
+      <h2>Quick draft</h2>
+      <form method="POST" action="/posts/new"><input type="hidden" name="_csrf" value="<?= csrf_token ?>">
+        <label for="quick-title">Title</label><input id="quick-title" name="title" required>
+        <label for="quick-body">Content</label><textarea id="quick-body" name="body" rows="4" required></textarea>
+        <p><button name="action" value="save">Save draft</button></p>
+      </form>
+    </section>
+
+    <section class="section" id="pages">
+      <h2>Pages</h2>
+      <p><?= stats["pages"] ?> pages in the content library.</p>
+      <p class="subtle">Pages share the post editor and revision workflow.</p>
+    </section>
+
+    <section class="section" id="comments">
+      <h2>Recent comments</h2>
+      <?py if recent_comments: ?><table><thead><tr><th>Author</th><th>Comment</th><th>Status</th></tr></thead><tbody>
+        <?py for comment in recent_comments: ?><tr><td><?= comment.comment_author ?></td><td><?= comment.comment_content[:120] ?></td><td><?= comment.comment_approved ?></td></tr><?py end ?>
+      </tbody></table><?py else: ?><p class="subtle">No comments yet.</p><?py end ?>
     </section>
 
     <section class="section" id="users">
@@ -104,10 +135,12 @@
       </form>
     </section>
 
-    <section class="section" id="themes">
+    <section class="section" id="appearance">
       <h2>Themes</h2><p class="subtle">Active theme: <?= active_theme.name ?></p>
       <?py for theme in themes: ?><div class="theme-row"><span><strong><?= theme.name ?></strong> <span class="subtle">v<?= theme.version ?></span></span><form method="POST" action="/admin/theme"><input type="hidden" name="_csrf" value="<?= csrf_token ?>"><input type="hidden" name="theme" value="<?= theme.slug ?>"><button><?py if theme.slug == active_theme.slug: ?>Active<?py else: ?>Activate<?py end ?></button></form></div><?py end ?>
     </section>
+    <section class="section" id="tools"><h2>Tools</h2><p>Database tables use the <code>py_</code> prefix. Database migrations run automatically at startup.</p></section>
+    </div>
   </main>
 </div>
 </body>

@@ -2,7 +2,7 @@
 test_integration.py – end-to-end HTTP integration tests.
 Run with: python test_integration.py
 """
-import sys, os
+import sys, os, re
 sys.path.insert(0, os.path.dirname(__file__))
 
 os.environ["DB_PATH"] = ":memory:"
@@ -25,6 +25,10 @@ def check(label, cond, detail=""):
 def dispatch(method, path, form=None, cookie=""):
     headers = {}
     body    = b""
+    if path == "/register" and isinstance(form, dict):
+        form = {**form, "allow_weak_password": "1"}
+    if path == "/account/password" and isinstance(form, dict):
+        form = {**form, "allow_weak_password": "1"}
     if cookie and method.upper() not in ("GET", "HEAD", "OPTIONS", "TRACE"):
         from blocks.csrf import csrf_token_for
         csrf = csrf_token_for(Request("GET", "/", {"Cookie": cookie}, b""))
@@ -69,6 +73,8 @@ check("login: has form",      'action="/login"' in r.body)
 r = dispatch("GET", "/register")
 check("register page 200",    r.status == 200)
 check("register: has form",   'action="/register"' in r.body)
+weak_box = re.search(r'<input type="checkbox" name="allow_weak_password"[^>]*>', r.body)
+check("weak password opt-in unchecked", bool(weak_box) and "checked" not in weak_box.group(0))
 
 # ─────────────────────────────────────────────────────────────────────────────
 print("\n── Unauthenticated redirects ─────────────────────────────────────────")

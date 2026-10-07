@@ -180,7 +180,7 @@ check("require_capability 401 unauthenticated", resp_401.status == 401)
 # ─────────────────────────────────────────────────────────────────────────────
 print("\n── register() ───────────────────────────────────────────────────────")
 
-alice = register("Alice Smith", "alice@example.com", "securepassword1", role="admin")
+alice = register("Alice Smith", "alice@example.com", "SecurePassword1!", role="admin")
 check("returns User",      isinstance(alice, User))
 check("id assigned",       alice.id is not None)
 check("email lower-cased", alice.email == "alice@example.com")
@@ -188,25 +188,31 @@ check("password hashed",   alice.password.startswith("pbkdf2$"))
 check("role = admin",      alice.role == "admin")
 check("active = 1",        alice.active == 1)
 
-bob = register("Bob", "bob@example.com", "password123")
+bob = register("Bob", "bob@example.com", "BobStrongPass123!")
 check("default role = member", bob.role == "member")
 
+check_raises("weak password requires confirmation", RegistrationError,
+             lambda: register("Weak", "weak@example.com", "password123"))
+weak_user = register("Weak Allowed", "weak-allowed@example.com", "password123",
+                     allow_weak_password=True)
+check("weak password accepted with confirmation", weak_user.id is not None)
+
 check_raises("duplicate email",       RegistrationError,
-             lambda: register("Alice2", "alice@example.com", "pw12345678"))
+             lambda: register("Alice2", "alice@example.com", "SecurePassword1!"))
 check_raises("blank name",            RegistrationError,
-             lambda: register("", "new@x.com", "pw12345678"))
+             lambda: register("", "new@x.com", "ValidStrongPass123!"))
 check_raises("invalid email",         RegistrationError,
-             lambda: register("X", "notanemail", "pw12345678"))
+             lambda: register("X", "notanemail", "ValidStrongPass123!"))
 check_raises("short password",        RegistrationError,
              lambda: register("X", "x@x.com", "short"))
 check_raises("invalid role",          RegistrationError,
-             lambda: register("X", "y@x.com", "pw12345678", role="superuser"))
+             lambda: register("X", "y@x.com", "ValidStrongPass123!", role="superuser"))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 print("\n── login() / logout() ───────────────────────────────────────────────")
 
-user, token = login("alice@example.com", "securepassword1")
+user, token = login("alice@example.com", "SecurePassword1!")
 check("returns User",         isinstance(user, User))
 check("returns token string", isinstance(token, str) and len(token) > 10)
 check("token in session store", True)   # implicit via sessions.get below
@@ -226,7 +232,7 @@ alice_db = User.objects.get(id=alice.id)
 alice_db.active = 0
 alice_db.save()
 check_raises("inactive user rejected", AuthError,
-             lambda: login("alice@example.com", "securepassword1"))
+             lambda: login("alice@example.com", "SecurePassword1!"))
 alice_db.active = 1; alice_db.save()
 
 # logout
@@ -240,7 +246,7 @@ check("logout destroys session",  sessions.get(token) is None)
 # ─────────────────────────────────────────────────────────────────────────────
 print("\n── get_current_user() ───────────────────────────────────────────────")
 
-_, token2 = login("alice@example.com", "securepassword1")
+_, token2 = login("alice@example.com", "SecurePassword1!")
 
 class ReqWithSession:
     headers = {"Cookie": f"pysess={token2}"}
@@ -271,20 +277,20 @@ check("bad token → None",  get_current_user(ReqBadToken()) is None)
 # ─────────────────────────────────────────────────────────────────────────────
 print("\n── change_password() ────────────────────────────────────────────────")
 
-_, tok3 = login("bob@example.com", "password123")
+_, tok3 = login("bob@example.com", "BobStrongPass123!")
 check("bob can log in",  sessions.get(tok3) is not None)
 
-change_password(bob.id, "password123", "newpassword456")
+change_password(bob.id, "BobStrongPass123!", "NewPassword456!")
 check("old session revoked after pw change", sessions.get(tok3) is None)
 check_raises("old pw rejected",    AuthError,
-             lambda: login("bob@example.com", "password123"))
-_, tok4 = login("bob@example.com", "newpassword456")
+             lambda: login("bob@example.com", "BobStrongPass123!"))
+_, tok4 = login("bob@example.com", "NewPassword456!")
 check("new password works",        sessions.get(tok4) is not None)
 
 check_raises("wrong old pw",       AuthError,
              lambda: change_password(bob.id, "wrongoldpw", "newone12345"))
 check_raises("too-short new pw",   AuthError,
-             lambda: change_password(bob.id, "newpassword456", "short"))
+             lambda: change_password(bob.id, "NewPassword456!", "short"))
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -301,7 +307,7 @@ class MockRouter:
             "admin": request.is_admin,
         })
 
-_, tok5 = login("alice@example.com", "securepassword1")
+_, tok5 = login("alice@example.com", "SecurePassword1!")
 
 class ReqMiddleware:
     method = "GET"

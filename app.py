@@ -63,6 +63,7 @@ from modules.auth.service     import (
 from change_password.users.model     import User
 from change_password.settings.model  import Setting
 from change_password.content.models  import Post
+from database.wp_schema import Comment
 from change_password.content.service import (
     list_posts, get_post_by_slug, get_page_by_slug,
     get_revisions, create_post, update_post,
@@ -109,6 +110,7 @@ def _base_ctx(request: Request) -> dict:
         "total_pages": None,
         "prev_page": None,
         "next_page": None,
+        "allow_weak_password": False,
     }
     inject_flash(request, ctx)
     return ctx
@@ -360,12 +362,16 @@ def register_page(request: Request) -> Response:
     email = request.form.get("email","")
     pw    = request.form.get("password","")
     try:
-        auth_register(name, email, pw)
+        auth_register(
+            name, email, pw,
+            allow_weak_password=request.form.get("allow_weak_password") == "1",
+        )
         user, token = auth_login(email, pw)
     except (RegistrationError, AuthError) as e:
         return Response.html(admin_render("register.html", request,
                                           {"error": str(e), "prefill_name": name,
-                                           "prefill_email": email}))
+                                           "prefill_email": email,
+                                           "allow_weak_password": request.form.get("allow_weak_password") == "1"}))
     resp = Response.redirect("/dashboard")
     resp.set_cookie(sessions.make_cookie(token))
     return resp
@@ -406,13 +412,18 @@ def change_pw_page(request: Request) -> Response:
     confirm = request.form.get("confirm_password","")
     if new_pw != confirm:
         return Response.html(admin_render("change_password.html", request,
-                                          {"error":"Passwords do not match.","success":None}))
+                                          {"error":"Passwords do not match.","success":None,
+                                           "allow_weak_password": request.form.get("allow_weak_password") == "1"}))
     try:
-        change_password(request.user.id, request.form.get("old_password",""), new_pw)
+        change_password(
+            request.user.id, request.form.get("old_password",""), new_pw,
+            allow_weak_password=request.form.get("allow_weak_password") == "1",
+        )
         user, token = auth_login(request.user.email, new_pw)
     except AuthError as e:
         return Response.html(admin_render("change_password.html", request,
-                                          {"error":str(e),"success":None}))
+                                          {"error":str(e),"success":None,
+                                           "allow_weak_password": request.form.get("allow_weak_password") == "1"}))
     resp = Response.html(admin_render("change_password.html", request,
                                       {"error":None,"success":"Password updated."}))
     resp.set_cookie(sessions.make_cookie(token))
@@ -442,14 +453,19 @@ def legacy_admin_route(request: Request) -> Response:
 @require_capability("manage_users")
 def admin_panel(request: Request) -> Response:
     all_posts = QuerySet(Post).filter(content_type="post").all()
+    recent_comments = QuerySet(Comment).order_by("-created_at").limit(8).all()
     ctx = _admin_ctx(
         request,
         stats={
             "total": len(all_posts),
             "published": sum(1 for post in all_posts if post.status == "published"),
             "drafts": sum(1 for post in all_posts if post.status == "draft"),
+            "pages": QuerySet(Post).filter(content_type="page").count(),
+            "users": QuerySet(User).count(),
+            "comments": QuerySet(Comment).count(),
         },
         recent_posts=sorted(all_posts, key=lambda post: post.created_at, reverse=True)[:8],
+        recent_comments=recent_comments,
         can_write=can(request.user, "write_post"),
     )
     resp = Response.html(admin_render("admin.html", request, ctx))

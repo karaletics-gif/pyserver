@@ -4,13 +4,13 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import urlencode
-
-import mysql.connector
 
 from core.request import Request
 from database import installer
@@ -58,6 +58,19 @@ class FakeConnection:
         pass
 
 
+class FakeMySQLError(Exception):
+    errno = 0
+
+
+def fake_connector(connect):
+    connector = types.ModuleType("mysql.connector")
+    connector.connect = connect
+    connector.Error = FakeMySQLError
+    mysql = types.ModuleType("mysql")
+    mysql.connector = connector
+    return {"mysql": mysql, "mysql.connector": connector}, connector
+
+
 def request(method, path, form=None, cookie=None):
     headers = {}
     body = b""
@@ -70,6 +83,26 @@ def request(method, path, form=None, cookie=None):
 
 
 class InstallerTests(unittest.TestCase):
+    def test_created_first_admin_can_log_in(self):
+        with tempfile.TemporaryDirectory() as directory:
+            db_path = str(Path(directory) / "install.sqlite3")
+            from database.init_db import init_db
+            from modules.auth.service import login
+
+            init_db(db_path)
+            try:
+                admin = installer.create_admin_user(
+                    "First Admin", "Admin@Example.Test", "First-Admin-Strong-2026!"
+                )
+                authenticated, token = login(
+                    "admin@example.test", "First-Admin-Strong-2026!"
+                )
+                self.assertEqual(authenticated.id, admin.id)
+                self.assertEqual(authenticated.role, "admin")
+                self.assertTrue(token)
+            finally:
+                pool.close(db_path)
+
     def test_database_then_admin_setup(self):
         connections = []
 
@@ -78,12 +111,11 @@ class InstallerTests(unittest.TestCase):
             connections.append((kwargs, connection))
             return connection
 
-        with tempfile.TemporaryDirectory() as directory:
+        modules, connector = fake_connector(fake_connect)
+        with tempfile.TemporaryDirectory() as directory, patch.dict(sys.modules, modules):
             config_path = Path(directory) / "private" / "pyserver.json"
             router = installer.InstallerRouter()
-            with patch.object(installer, "CONFIG_PATH", config_path), patch.object(
-                mysql.connector, "connect", side_effect=fake_connect
-            ):
+            with patch.object(installer, "CONFIG_PATH", config_path):
                 first = router.router.dispatch(request("GET", "/"))
                 cookie = next(value for value in first._cookies if value.startswith("pyinstall=")).split(";", 1)[0]
                 csrf_match = re.search(r'name="_csrf" value="([^"]+)"', first.body)
@@ -105,13 +137,25 @@ class InstallerTests(unittest.TestCase):
                 self.assertEqual(connections[1][0]["database"], "pyserver_test")
 
                 admin_page = router.router.dispatch(request("GET", "/install/admin", cookie=cookie))
+                checkbox_tag = re.search(r'<input type="checkbox" name="allow_weak_password"[^>]*>', admin_page.body).group(0)
+                self.assertNotIn("checked", checkbox_tag)
                 admin_csrf = re.search(r'name="_csrf" value="([^"]+)"', admin_page.body).group(1)
+                weak_response = router.router.dispatch(request("POST", "/install/admin", {
+                    "_csrf": admin_csrf,
+                    "admin_name": "First Admin",
+                    "admin_email": "admin@example.test",
+                    "admin_password": "weakpass123",
+                    "admin_password_confirm": "weakpass123",
+                }, cookie))
+                self.assertEqual(weak_response.status, 400)
+                self.assertIn("at least 12 characters", weak_response.body)
+                admin_csrf = re.search(r'name="_csrf" value="([^"]+)"', weak_response.body).group(1)
                 done = router.router.dispatch(request("POST", "/install/admin", {
                     "_csrf": admin_csrf,
                     "admin_name": "First Admin",
                     "admin_email": "admin@example.test",
-                    "admin_password": "long-and-private-password",
-                    "admin_password_confirm": "long-and-private-password",
+                    "admin_password": "First-Admin-Strong-2026!",
+                    "admin_password_confirm": "First-Admin-Strong-2026!",
                 }, cookie))
                 self.assertEqual(done.status, 302)
                 self.assertEqual(done.headers["Location"], "/py-admin")
@@ -122,9 +166,24 @@ class InstallerTests(unittest.TestCase):
                 self.assertEqual(saved["password"], "")
 
                 all_sql = "\n".join(cursor.sql for _, connection in connections for cursor in connection.statements)
-                self.assertIn("CREATE TABLE IF NOT EXISTS users", all_sql)
-                self.assertIn("CREATE TABLE IF NOT EXISTS post_revisions", all_sql)
-                self.assertIn("INSERT INTO users", all_sql)
+                self.assertIn("CREATE TABLE IF NOT EXISTS py_users", all_sql)
+                self.assertIn("CREATE TABLE IF NOT EXISTS py_post_revisions", all_sql)
+                self.assertIn("INSERT INTO py_users", all_sql)
+                from modules.auth.passwords import verify_password
+                user_insert = next(
+                    cursor for _, connection in connections for cursor in connection.statements
+                    if cursor.sql.startswith("INSERT INTO py_users")
+                )
+                columns = re.search(r"INSERT INTO py_users \((.*?)\) VALUES", user_insert.sql).group(1)
+                inserted_user = dict(zip(
+                    [column.strip().strip("`") for column in columns.split(",")],
+                    user_insert.params,
+                ))
+                self.assertEqual(inserted_user["email"], "admin@example.test")
+                self.assertEqual(inserted_user["role"], "admin")
+                self.assertTrue(verify_password(
+                    "First-Admin-Strong-2026!", inserted_user["password"]
+                ))
 
                 admin_response = router.dispatch(request("GET", "/py-admin"))
                 self.assertEqual(admin_response.status, 401)
@@ -136,7 +195,11 @@ class InstallerTests(unittest.TestCase):
         first = router.router.dispatch(request("GET", "/"))
         cookie = next(value for value in first._cookies if value.startswith("pyinstall=")).split(";", 1)[0]
         csrf = re.search(r'name="_csrf" value="([^"]+)"', first.body).group(1)
-        with patch.object(mysql.connector, "connect") as connect_mock:
+        def unexpected_connect(**kwargs):
+            raise AssertionError("connector should not be called for an invalid database name")
+
+        modules, connector = fake_connector(unexpected_connect)
+        with patch.dict(sys.modules, modules):
             response = router.router.dispatch(request("POST", "/install/database", {
                 "_csrf": csrf, "host": "localhost", "port": "3306",
                 "database": "bad-name; DROP DATABASE", "db_user": "admin",
@@ -144,7 +207,6 @@ class InstallerTests(unittest.TestCase):
             }, cookie))
         self.assertEqual(response.status, 400)
         self.assertIn("database name", response.body.lower())
-        connect_mock.assert_not_called()
 
 
 if __name__ == "__main__":
