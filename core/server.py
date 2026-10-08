@@ -2,6 +2,7 @@ import http.server
 import socket
 from core.request import Request
 from core.router import Router
+from core import config
 
 
 class _Handler(http.server.BaseHTTPRequestHandler):
@@ -61,10 +62,10 @@ class Server:
         server.serve()
     """
 
-    def __init__(self, router: Router, host: str = "0.0.0.0", port: int = 8080):
+    def __init__(self, router: Router, host: str | None = None, port: int | None = None):
         self.router = router
-        self.host = host
-        self.port = port
+        self.host = host if host is not None else config.HOST
+        self.port = port if port is not None else config.PORT
 
     def serve(self):
         # Inject router into the handler class

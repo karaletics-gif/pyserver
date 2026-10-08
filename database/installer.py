@@ -10,6 +10,7 @@ import secrets
 import tempfile
 from pathlib import Path
 
+from core import config as app_config
 from core.request import Request
 from core.response import Response
 from core.router import Router
@@ -17,7 +18,7 @@ from modules.auth.passwords import hash_password, validate_password
 
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-CONFIG_PATH = Path(os.environ.get("PYSERVER_CONFIG", BASE_DIR / "instance" / "pyserver.json"))
+CONFIG_PATH = app_config.CONFIG_PATH
 _DATABASE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
 
 
@@ -40,6 +41,9 @@ def create_admin_user(name: str, email: str, password: str, allow_weak: bool = F
 
 
 def load_config() -> dict | None:
+    env_config = app_config.db_config()
+    if env_config:
+        return env_config
     if not CONFIG_PATH.is_file():
         return None
     with CONFIG_PATH.open(encoding="utf-8") as stream:
@@ -122,11 +126,13 @@ class InstallerRouter:
     def database_form(self, request: Request) -> Response:
         session, _ = self._setup_session(request)
         csrf = html.escape(self._tokens[session], quote=True)
-        fields = f"""<section class="panel"><p>Connect to a MySQL or MariaDB server. The account must be allowed to create a database.</p>
+        env = app_config.db_defaults()
+        e = lambda v: html.escape(str(v), quote=True)
+        fields = f"""<section class="panel"><p>Connect to a MySQL or MariaDB server. The account must be allowed to create a database. Defaults come from .env; a blank password uses DB_PASSWORD.</p>
 <form method="post" action="/install/database"><input type="hidden" name="_csrf" value="{csrf}">
-<div class="row"><div><label for="host">Database host</label><input id="host" name="host" value="127.0.0.1" required></div><div><label for="port">Port</label><input id="port" name="port" type="number" value="3306" min="1" max="65535" required></div></div>
-<label for="database">Database name</label><input id="database" name="database" autocomplete="off" required>
-<label for="db_user">Database username</label><input id="db_user" name="db_user" autocomplete="username" required>
+<div class="row"><div><label for="host">Database host</label><input id="host" name="host" value="{e(env['host'])}" required></div><div><label for="port">Port</label><input id="port" name="port" type="number" value="{e(env['port'])}" min="1" max="65535" required></div></div>
+<label for="database">Database name</label><input id="database" name="database" value="{e(env['database'])}" autocomplete="off" required>
+<label for="db_user">Database username</label><input id="db_user" name="db_user" value="{e(env['user'])}" autocomplete="username" required>
 <label for="db_password">Database password (optional)</label><input id="db_password" name="db_password" type="password" autocomplete="current-password">
 <button type="submit">Connect and create database</button></form></section>"""
         return self._response(request, _layout("Database connection", fields), session=session)
@@ -139,10 +145,10 @@ class InstallerRouter:
         form = request.form
         database = form.get("database", "").strip()
         username = form.get("db_user", "").strip()
-        password = form.get("db_password", "")
-        host = form.get("host", "127.0.0.1").strip()
+        password = form.get("db_password", "") or app_config.db_defaults()["password"]
+        host = form.get("host", app_config.db_defaults()["host"]).strip()
         try:
-            port = int(form.get("port", "3306"))
+            port = int(form.get("port", str(app_config.db_defaults()["port"])))
         except ValueError:
             port = 0
         if not _DATABASE_NAME.fullmatch(database):

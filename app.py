@@ -9,21 +9,20 @@ Start:  python app.py
 import os, sys, time
 sys.path.insert(0, os.path.dirname(__file__))
 
-_CONFIG_PATH = os.environ.get(
-    "PYSERVER_CONFIG",
-    os.path.join(os.path.dirname(__file__), "instance", "pyserver.json"),
-)
-if __name__ == "__main__" and not os.environ.get("DB_PATH") and not os.path.isfile(_CONFIG_PATH):
+from core import config
+
+_CONFIG_PATH = str(config.CONFIG_PATH)
+if __name__ == "__main__" and not config.SQLITE_PATH and not os.path.isfile(_CONFIG_PATH):
     from core.server import Server
     from database.installer import InstallerRouter
 
-    Server(InstallerRouter(), host=os.environ.get("HOST", "127.0.0.1"), port=8080).serve()
+    Server(InstallerRouter(), host=config.HOST, port=config.PORT).serve()
     raise SystemExit(0)
 
 # ── Bootstrap DB ──────────────────────────────────────────────────────────────
 from database.init_db import init_db
 
-DB_PATH = os.environ.get("DB_PATH")
+DB_PATH = config.SQLITE_PATH
 if DB_PATH:
     init_db(DB_PATH, seed=True)
 else:
@@ -578,7 +577,7 @@ from blocks.middleware import LoggingMiddleware
 
 auth   = AuthMiddleware(router)
 logged = LoggingMiddleware(auth)
-server = Server(logged, host=os.environ.get("HOST", "127.0.0.1"), port=8080)
+server = Server(logged, host=config.HOST, port=config.PORT)
 
 if __name__ == "__main__":
     server.serve()

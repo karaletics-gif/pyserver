@@ -112,7 +112,8 @@ class InstallerTests(unittest.TestCase):
             return connection
 
         modules, connector = fake_connector(fake_connect)
-        with tempfile.TemporaryDirectory() as directory, patch.dict(sys.modules, modules):
+        with tempfile.TemporaryDirectory() as directory, patch.dict(sys.modules, modules), \
+                patch("database.init_db._verify_tables"):
             config_path = Path(directory) / "private" / "pyserver.json"
             router = installer.InstallerRouter()
             with patch.object(installer, "CONFIG_PATH", config_path):

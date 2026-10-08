@@ -50,11 +50,20 @@ def init_db(path: str | dict = ":memory:", seed: bool = False) -> None:
     Setting.create_table()
     PySchema.create_tables()
     _migrate_imported_roles()
+    _verify_tables()
 
     if seed:
         _seed()
 
     print(f"  ✔  Database ready: {display_path}")
+
+
+def _verify_tables() -> None:
+    """Fail fast if any required table is still missing after creation."""
+    models = (User, Post, PostRevision, Setting, *PySchema.TABLES)
+    missing = [m._table for m in models if not _table_exists(m._table)]
+    if missing:
+        raise RuntimeError("Missing database tables after setup: " + ", ".join(missing))
 
 
 def _table_exists(table_name: str) -> bool:

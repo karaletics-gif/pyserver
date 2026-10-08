@@ -2,7 +2,7 @@
 
 PyServer is a learning-oriented content management system implemented in Python without Django or Flask. It includes a small HTTP server and router, MySQL/MariaDB persistence, authentication and permissions, a template engine, themed public pages, post revisions, an admin panel, and a JSON API.
 
-> **User documentation:** [Open the updated PyServer CMS User Manual](docs/PyServer_User_Manual_2026-10-08.docx)
+> **User documentation:** [Open the PyServer CMS User Manual](docs/USER_MANUAL.md) (the older [.docx manual](docs/PyServer_User_Manual_2026-10-08.docx) is kept for reference)
 
 ## What It Does
 
@@ -25,23 +25,50 @@ PyServer is a learning-oriented content management system implemented in Python 
 
 ## Quick Start
 
-Install the Python dependency and start the application from the repository root:
+### 1. Create and activate a virtual environment
 
-**PowerShell:**
-
-```powershell
-python -m pip install -r requirements.txt
-python app.py
-```
-
-**Bash:**
+Use one virtual environment per project so dependencies stay isolated. Create it once, inside the repository root:
 
 ```bash
+python -m venv .venv
+```
+
+Activate it in every new terminal:
+
+| Shell | Command |
+| --- | --- |
+| PowerShell | `.venv\Scripts\Activate.ps1` |
+| CMD | `.venv\Scripts\activate.bat` |
+| Git Bash | `source .venv/Scripts/activate` |
+| Linux / macOS | `source .venv/bin/activate` |
+
+The prompt shows `(.venv)` when active. If PowerShell blocks activation, run `Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned` once.
+
+When you are finished, leave the environment with:
+
+```bash
+deactivate
+```
+
+Best practices: never commit `.venv` (recreate it from `requirements.txt`), install with `python -m pip` so packages go to the active environment, and delete and recreate `.venv` if it becomes inconsistent.
+
+### 2. Install dependencies and configure
+
+```bash
+python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
+cp .env.example .env     # PowerShell: Copy-Item .env.example .env
+```
+
+Edit `.env` to set `HOST`, `PORT`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, and `DB_PASSWORD`. `.env` is ignored by Git; keep it private. Real environment variables override `.env`.
+
+### 3. Start the application
+
+```bash
 python app.py
 ```
 
-Open <http://localhost:8080> directly for local setup, or open your domain when Apache is proxying to the app. The first-run installer asks for the MySQL/MariaDB host, port, database name, database username, and password. The password can be blank when the database account has no password. The supplied database account must be permitted to create and use the selected database.
+Open <http://localhost:8080> directly for local setup, or open your domain when Apache is proxying to the app. The first-run installer asks for the MySQL/MariaDB host, port, database name, database username, and password; the form is prefilled from `.env`, and a blank password uses `DB_PASSWORD`. The installer creates the database and every required table, then verifies that none is missing. The supplied database account must be permitted to create and use the selected database.
 
 After the database is created and migrations complete, the installer asks for the first administrator's name, email, and password. The installer stores a PBKDF2 password hash compatible with the login service. When installation finishes, sign in at `/py-admin` (for example, `https://your-domain.example/py-admin`). The existing `/admin` URL redirects to `/py-admin`.
 
