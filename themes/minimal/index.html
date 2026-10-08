@@ -8,7 +8,7 @@
   <?=! theme_head ?>
 </head>
 <body class="<?= theme_body_class ?>">
-<header><a href="/"><strong><?= site_name ?></strong></a><nav><a href="/posts">Posts</a> · <a href="/search">Search</a></nav>
+<header><a href="/"><strong><?= site_name ?></strong></a><nav><?py if menus.get("primary"): ?><?py for m in menus["primary"]: ?><a href="<?= m['url'] ?>"><?= m['label'] ?></a> <?py end ?><?py else: ?><a href="/posts">Posts</a> · <a href="/search">Search</a><?py end ?></nav>
 <?py if current_user: ?><form method="POST" action="/logout"><input type="hidden" name="_csrf" value="<?= csrf_token ?>"><button>Sign out</button></form><?py else: ?><nav><a href="/login">Sign in</a> · <a href="/register">Register</a></nav><?py end ?>
 </header>
 <main>

@@ -58,13 +58,25 @@ Public API
 from __future__ import annotations
 
 import importlib.util
+import io
 import os
+import posixpath
+import re
+import shutil
 import sys
+import tempfile
 import traceback
-from typing import Any
+import zipfile
+from typing import Any, Callable
 
 from cookie.template_engine import TemplateEngine
 from cookie.hooks           import HookRegistry
+
+_SLUG_RE   = re.compile(r"^[a-z0-9][a-z0-9_-]{0,63}$")
+_PARENT_RE = re.compile(r"^THEME_PARENT\s*=\s*[\"']([A-Za-z0-9_-]+)[\"']", re.M)
+MAX_ZIP_FILES = 2000
+MAX_ZIP_UNPACKED = 50 * 1024 * 1024
+SCREENSHOTS = ("screenshot.png", "screenshot.jpg", "screenshot.jpeg", "screenshot.webp")
 
 
 # ── Theme metadata keys (read from theme.py module attributes) ───────────────
@@ -108,6 +120,7 @@ class Theme:
         self.path        = path
         self.hooks       = hooks
         self.engine      = TemplateEngine(base_dir=path)
+        self.template_dir = path   # merged parent+child directory for child themes
 
         # Populated by _load_metadata() after theme.py runs
         self.name        = slug
@@ -115,8 +128,34 @@ class Theme:
         self.author      = ""
         self.description = ""
         self.url         = ""
+        self.supports    = None   # None = every customisation feature
+        self.widget_areas = {"sidebar": "Sidebar", "footer": "Footer"}
+        self.parent_slug = self._read_parent()
         self._module     = None
         self._functions  = {}   # callables registered by theme.py
+
+    @property
+    def is_child(self) -> bool:
+        return bool(self.parent_slug)
+
+    @property
+    def screenshot_url(self) -> str:
+        for name in SCREENSHOTS:
+            if os.path.isfile(os.path.join(self.path, name)) or \
+               os.path.isfile(os.path.join(self.path, "assets", name)):
+                return f"/themes/{self.slug}/assets/{name}"
+        return ""
+
+    def _read_parent(self) -> str:
+        try:
+            with open(os.path.join(self.path, "theme.py"), encoding="utf-8") as fh:
+                match = _PARENT_RE.search(fh.read())
+        except OSError:
+            return ""
+        return match.group(1) if match else ""
+
+    def supports_feature(self, feature: str) -> bool:
+        return self.supports is None or feature in self.supports
 
     # ── Metadata ──────────────────────────────────────────────────────────────
 
@@ -129,12 +168,15 @@ class Theme:
         self.author      = getattr(mod, "THEME_AUTHOR",      "")
         self.description = getattr(mod, "THEME_DESCRIPTION", "")
         self.url         = getattr(mod, "THEME_URL",         "")
+        supports         = getattr(mod, "THEME_SUPPORTS",    None)
+        self.supports    = set(supports) if supports is not None else None
+        self.widget_areas = dict(getattr(mod, "THEME_WIDGET_AREAS", self.widget_areas))
 
     # ── Template resolution ───────────────────────────────────────────────────
 
     def has_template(self, name: str) -> bool:
-        """Return True if {name}.html exists in the theme directory."""
-        return os.path.isfile(os.path.join(self.path, f"{name}.html"))
+        """Return True if {name}.html exists in the theme (or merged child) directory."""
+        return os.path.isfile(os.path.join(self.template_dir, f"{name}.html"))
 
     def resolve_template(self, name: str) -> str:
         """
@@ -219,6 +261,7 @@ class Theme:
         self.hooks.run_hook("theme.before_render", resolved, ctx)
 
         html = self.engine.render_file(f"{resolved}.html", ctx)
+        html = self.hooks.apply_filters("theme.html", html)
 
         self.hooks.run_hook("theme.after_render", resolved, html)
 
@@ -263,11 +306,26 @@ class ThemeLoader:
         self,
         themes_dir: str = "themes",
         hooks: HookRegistry | None = None,
+        cache_dir: str | None = None,
     ) -> None:
         self.themes_dir = os.path.abspath(themes_dir)
         self.hooks      = hooks or HookRegistry()
+        self.cache_dir  = os.path.abspath(cache_dir or os.path.join(
+            os.path.dirname(self.themes_dir), "instance", "theme-cache"))
         self._active:   Theme | None = None
         self._registry: dict[str, Theme] = {}
+        # (kind, name, fn, priority) re-registered after every activation
+        self._core: list[tuple[str, str, Callable, int]] = []
+
+    def add_core_filter(self, name: str, fn: Callable, priority: int = 10) -> None:
+        """Register a filter that survives theme switches (theme.* hooks are cleared on switch)."""
+        self._core.append(("filter", name, fn, priority))
+        self._apply_core()
+
+    def _apply_core(self) -> None:
+        for _kind, name, fn, priority in self._core:
+            self.hooks.remove_filter(name, fn)
+            self.hooks.add_filter(name, fn, priority)
 
     # ── Discovery ─────────────────────────────────────────────────────────────
 
@@ -310,10 +368,9 @@ class ThemeLoader:
         if not os.path.isfile(functions_path):
             raise ThemeError(f"theme.py missing from theme '{slug}': {functions_path}")
 
-        if not os.path.isfile(os.path.join(path, "index.html")):
-            raise ThemeError(f"Theme '{slug}' has no index.html (required fallback).")
-
         theme = Theme(slug=slug, path=path, hooks=self.hooks)
+        if not theme.is_child and not os.path.isfile(os.path.join(path, "index.html")):
+            raise ThemeError(f"Theme '{slug}' has no index.html (required fallback).")
         self._registry[slug] = theme
         return theme
 
@@ -329,14 +386,44 @@ class ThemeLoader:
         4. Store as active theme.
         """
         theme = self._load(slug)
+        parent = self._load_parent(theme)
         self._execute_functions(theme)
+        if parent is not None:
+            self._execute_functions(parent)
+            self._merge_templates(theme, parent)
         theme._load_metadata()
+        if parent is not None:
+            parent._load_metadata()
+        self._apply_core()
 
         self._active = theme
         self.hooks.run_hook("theme.activated", theme)
 
         print(f"  🎨  Theme activated: {theme.name!r} (v{theme.version})")
         return theme
+
+    def _load_parent(self, theme: Theme) -> Theme | None:
+        if not theme.is_child:
+            return None
+        if theme.parent_slug == theme.slug:
+            raise ThemeError(f"Theme '{theme.slug}' cannot be its own parent.")
+        if theme.parent_slug not in self.discover():
+            raise ThemeError(
+                f"Parent theme '{theme.parent_slug}' of '{theme.slug}' is not installed.")
+        parent = self._load(theme.parent_slug)
+        if parent.is_child:
+            raise ThemeError(f"Parent theme '{parent.slug}' is itself a child theme.")
+        return parent
+
+    def _merge_templates(self, child: Theme, parent: Theme) -> None:
+        """Build instance/theme-cache/<child>: parent templates overlaid with the child's."""
+        target = os.path.join(self.cache_dir, child.slug)
+        shutil.rmtree(target, ignore_errors=True)
+        skip = shutil.ignore_patterns("theme.py", "assets", "__pycache__")
+        shutil.copytree(parent.path, target, ignore=skip)
+        shutil.copytree(child.path, target, ignore=skip, dirs_exist_ok=True)
+        child.template_dir = target
+        child.engine = TemplateEngine(base_dir=target)
 
     def _execute_functions(self, theme: Theme) -> None:
         """
@@ -425,6 +512,7 @@ class ThemeLoader:
 
         # Evict from registry so theme.py re-executes cleanly
         self._registry.pop(slug, None)
+        self._registry.pop(self._parent_of(slug), None)
 
         try:
             return self.activate(slug)
@@ -448,16 +536,145 @@ class ThemeLoader:
         Read and return raw bytes for a theme asset.
         Returns None if the file doesn't exist.
         """
+        if not _SLUG_RE.match(slug or ""):
+            return None
         safe_filename = os.path.normpath(filename).lstrip("/\\")
-        asset_path    = os.path.join(self.themes_dir, slug, "assets", safe_filename)
-        # Prevent path traversal outside the theme's assets directory
-        expected_root = os.path.join(self.themes_dir, slug, "assets")
-        if not os.path.abspath(asset_path).startswith(os.path.abspath(expected_root)):
-            return None
-        if not os.path.isfile(asset_path):
-            return None
-        with open(asset_path, "rb") as fh:
-            return fh.read()
+        for candidate in (slug, self._parent_of(slug)):
+            if not candidate:
+                continue
+            root = os.path.abspath(os.path.join(self.themes_dir, candidate, "assets"))
+            asset_path = os.path.abspath(os.path.join(root, safe_filename))
+            # Prevent path traversal outside the theme's assets directory
+            if not asset_path.startswith(root + os.sep):
+                return None
+            if not os.path.isfile(asset_path) and safe_filename in SCREENSHOTS:
+                asset_path = os.path.join(self.themes_dir, candidate, safe_filename)
+            if os.path.isfile(asset_path):
+                with open(asset_path, "rb") as fh:
+                    return fh.read()
+        return None
+
+    def _parent_of(self, slug: str) -> str:
+        if not _SLUG_RE.match(slug or ""):
+            return ""
+        path = os.path.join(self.themes_dir, slug)
+        if not os.path.isdir(path):
+            return ""
+        return self._load(slug).parent_slug if slug in self.discover() else ""
+
+    # ── Install / delete / scaffold ────────────────────────────────────────────
+
+    def install_zip(self, data: bytes, fallback_name: str = "theme") -> str:
+        """
+        Validate and extract a theme zip into themes_dir. Returns the new slug.
+
+        The archive may contain one top-level folder (with theme.py inside) or the
+        theme files directly at its root. Unsafe paths, symlinks, oversized archives
+        and existing slugs are rejected.
+        """
+        try:
+            archive = zipfile.ZipFile(io.BytesIO(data))
+        except zipfile.BadZipFile:
+            raise ThemeError("The uploaded file is not a valid zip archive.")
+        members = [m for m in archive.infolist() if not m.filename.startswith("__MACOSX/")]
+        if not members or len(members) > MAX_ZIP_FILES:
+            raise ThemeError("The archive is empty or contains too many files.")
+        if sum(m.file_size for m in members) > MAX_ZIP_UNPACKED:
+            raise ThemeError("The archive is too large when unpacked.")
+        for m in members:
+            name = m.filename
+            clean = posixpath.normpath(name)
+            if (name.startswith(("/", "\\")) or "\\" in name or ":" in name.split("/")[0]
+                    or clean == ".." or clean.startswith("../")):
+                raise ThemeError(f"Unsafe path in archive: {name}")
+            if (m.external_attr >> 16) & 0o170000 == 0o120000:
+                raise ThemeError(f"Symbolic links are not allowed: {name}")
+
+        names = [m.filename for m in members]
+        tops = {n.split("/")[0] for n in names if n.strip("/")}
+        if len(tops) == 1 and f"{next(iter(tops))}/theme.py" in names:
+            prefix, base = next(iter(tops)) + "/", next(iter(tops))
+        elif "theme.py" in names:
+            prefix, base = "", fallback_name
+        else:
+            raise ThemeError("theme.py was not found. A theme needs theme.py and index.html.")
+        slug = re.sub(r"[^a-z0-9_-]+", "-", base.lower()).strip("-_")[:64]
+        if not _SLUG_RE.match(slug):
+            raise ThemeError("The theme folder name is not valid.")
+
+        source = archive.read(prefix + "theme.py").decode("utf-8", errors="replace")
+        try:
+            compile(source, "theme.py", "exec")
+        except SyntaxError as exc:
+            raise ThemeError(f"theme.py has a syntax error: {exc}")
+        if not _PARENT_RE.search(source) and (prefix + "index.html") not in names:
+            raise ThemeError("index.html was not found in the theme.")
+        dest = os.path.join(self.themes_dir, slug)
+        if os.path.exists(dest):
+            raise ThemeError(f"Theme '{slug}' is already installed.")
+
+        os.makedirs(self.themes_dir, exist_ok=True)
+        staging = tempfile.mkdtemp(prefix=".install-", dir=self.themes_dir)
+        try:
+            for m in members:
+                if not m.filename.startswith(prefix) or m.filename.endswith("/"):
+                    continue
+                target = os.path.abspath(os.path.join(staging, m.filename[len(prefix):]))
+                if not target.startswith(os.path.abspath(staging) + os.sep):
+                    raise ThemeError(f"Unsafe path in archive: {m.filename}")
+                os.makedirs(os.path.dirname(target), exist_ok=True)
+                with archive.open(m) as src, open(target, "wb") as out:
+                    shutil.copyfileobj(src, out)
+            os.replace(staging, dest)
+        except Exception:
+            shutil.rmtree(staging, ignore_errors=True)
+            raise
+        self._registry.pop(slug, None)
+        return slug
+
+    def delete_theme(self, slug: str) -> None:
+        """Delete an installed theme; the active theme and its parent cannot be removed."""
+        if slug not in self.discover():
+            raise ThemeError("That theme is not installed.")
+        active = self._active
+        if active and slug in (active.slug, active.parent_slug):
+            raise ThemeError("The active theme (or its parent) cannot be deleted.")
+        shutil.rmtree(os.path.join(self.themes_dir, slug))
+        shutil.rmtree(os.path.join(self.cache_dir, slug), ignore_errors=True)
+        self._registry.pop(slug, None)
+
+    def children_of(self, slug: str) -> list[str]:
+        return [t.slug for t in self.available() if t.parent_slug == slug]
+
+    def create_child_theme(self, parent_slug: str, name: str) -> str:
+        """Scaffold themes/<slug>/ that inherits everything from *parent_slug*."""
+        parents = {t.slug: t for t in self.available()}
+        if parent_slug not in parents:
+            raise ThemeError("Choose an installed parent theme.")
+        if parents[parent_slug].is_child:
+            raise ThemeError("A child theme cannot be the parent of another theme.")
+        name = name.strip()
+        slug = re.sub(r"[^a-z0-9_-]+", "-", name.lower()).strip("-_")[:64]
+        if not name or not _SLUG_RE.match(slug):
+            raise ThemeError("Enter a name for the child theme.")
+        dest = os.path.join(self.themes_dir, slug)
+        if os.path.exists(dest):
+            raise ThemeError(f"Theme '{slug}' already exists.")
+        os.makedirs(os.path.join(dest, "assets"))
+        parent_name = parents[parent_slug].name
+        with open(os.path.join(dest, "theme.py"), "w", encoding="utf-8") as fh:
+            fh.write(
+                f'"""Child theme of {parent_name}.\n\n'
+                f'Templates placed in this folder override the parent\'s. Anything else\n'
+                f'(layout, partials, assets) is inherited.\n"""\n\n'
+                f'THEME_NAME        = {name!r}\n'
+                f'THEME_PARENT      = {parent_slug!r}\n'
+                f'THEME_VERSION     = "1.0.0"\n'
+                f'THEME_AUTHOR      = ""\n'
+                f'THEME_DESCRIPTION = "Child of {parent_name}."\n\n'
+                f'# Register hooks here; the child\'s theme.py runs before the parent\'s.\n'
+            )
+        return slug
 
     # ── Introspection ─────────────────────────────────────────────────────────
 

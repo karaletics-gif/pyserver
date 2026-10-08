@@ -1,0 +1,23 @@
+<?py extend("layout.html") ?>
+<?py block "title": ?><?= title ?><?py endblock ?>
+<?py block "content": ?>
+<h1 class="heading"><?= title ?></h1>
+<?py if error: ?><div class="notice notice-error"><p><?= error ?></p></div><?py end ?>
+<section class="card"><div class="inside">
+  <form method="POST" action="<?= action ?>">
+    <input type="hidden" name="_csrf" value="<?= csrf_token ?>">
+    <?py for f in fields: ?>
+    <div class="form-field">
+      <label for="<?= f['key'] ?>"><?= f['label'] ?></label>
+      <?py if f['type'] == 'textarea': ?><textarea id="<?= f['key'] ?>" name="<?= f['key'] ?>" rows="10" style="font-family:monospace"><?= f['value'] ?></textarea>
+      <?py elif f['type'] == 'select': ?><select id="<?= f['key'] ?>" name="<?= f['key'] ?>"><?py for value, label in f['choices']: ?><option value="<?= value ?>"<?py if value == f['value']: ?> selected<?py end ?>><?= label ?></option><?py end ?></select>
+      <?py elif f['type'] == 'color': ?><input type="text" id="<?= f['key'] ?>" name="<?= f['key'] ?>" class="regular-text" placeholder="#3858e9" value="<?= f['value'] ?>">
+      <?py else: ?><input type="text" id="<?= f['key'] ?>" name="<?= f['key'] ?>" class="regular-text" value="<?= f['value'] ?>">
+      <?py end ?>
+      <?py if f['help']: ?><div class="muted"><?= f['help'] ?></div><?py end ?>
+    </div>
+    <?py end ?>
+    <button class="button button-primary">Save Changes</button>
+  </form>
+</div></section>
+<?py endblock ?>

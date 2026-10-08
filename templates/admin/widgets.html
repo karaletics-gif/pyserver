@@ -1,0 +1,30 @@
+<?py extend("layout.html") ?>
+<?py block "title": ?>Widgets<?py endblock ?>
+<?py block "content": ?>
+<h1 class="heading">Widgets</h1>
+<p class="muted">Widgets appear in the widget areas provided by the active theme. The Footer area is shown automatically; themes can print other areas from the <code>widgets</code> template variable.</p>
+<form method="POST" action="/py-admin/widgets.py">
+  <input type="hidden" name="_csrf" value="<?= csrf_token ?>">
+  <?py for slug, label, items in areas: ?>
+  <section class="card">
+    <h2><?= label ?></h2>
+    <div class="inside">
+      <div id="area-<?= slug ?>">
+        <?py for i, w in enumerate(items): ?>
+        <div data-row class="widget-edit">
+          <input type="text" name="w_<?= slug ?>_<?= i ?>_title" value="<?= w['title'] ?>" placeholder="Title">
+          <select name="w_<?= slug ?>_<?= i ?>_type"><option value="text"<?py if w['type'] == 'text': ?> selected<?py end ?>>Text</option><option value="html"<?py if w['type'] == 'html': ?> selected<?py end ?>>Custom HTML</option></select>
+          <textarea name="w_<?= slug ?>_<?= i ?>_content" rows="3" placeholder="Content"><?= w['content'] ?></textarea>
+          <button type="button" class="button-link-delete" data-remove-row>Remove</button>
+        </div>
+        <?py end ?>
+      </div>
+      <template id="area-<?= slug ?>-template"><div data-row class="widget-edit"><input type="text" name="w_<?= slug ?>___i___title" placeholder="Title"><select name="w_<?= slug ?>___i___type"><option value="text">Text</option><option value="html">Custom HTML</option></select><textarea name="w_<?= slug ?>___i___content" rows="3" placeholder="Content"></textarea><button type="button" class="button-link-delete" data-remove-row>Remove</button></div></template>
+      <p><button type="button" class="button" data-add-row="area-<?= slug ?>">Add widget</button></p>
+    </div>
+  </section>
+  <?py end ?>
+  <button class="button button-primary">Save Widgets</button>
+</form>
+<script src="/py-admin/assets/admin.js"></script>
+<?py endblock ?>

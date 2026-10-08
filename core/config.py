@@ -45,6 +45,8 @@ UPLOAD_DIR = Path(get("UPLOAD_DIR", "uploads"))
 if not UPLOAD_DIR.is_absolute():
     UPLOAD_DIR = BASE_DIR / UPLOAD_DIR
 MAX_UPLOAD_MB = get_int("MAX_UPLOAD_MB", 10)
+MAX_THEME_ZIP_MB = get_int("MAX_THEME_ZIP_MB", 20)
+DISALLOW_FILE_EDIT = (get("DISALLOW_FILE_EDIT", "false") or "").lower() in ("1", "true", "yes")
 
 
 def db_defaults() -> dict:

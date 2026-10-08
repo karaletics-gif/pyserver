@@ -368,11 +368,8 @@ def register_admin_routes(router, render, flash_redirect, loader) -> None:
 
     # ── Appearance ───────────────────────────────────────────────────────────
 
-    @router.get(url("themes"))
-    @require_capability("manage_settings")
-    def themes_page(request: Request) -> Response:
-        return page(request, "themes.html", "appearance", themes=loader.available(),
-                    active_theme=loader.active)
+    from modules.admin.appearance import register_appearance_routes
+    register_appearance_routes(router, page, flash_redirect, loader)
 
     # ── Users ────────────────────────────────────────────────────────────────
 

@@ -1,0 +1,35 @@
+<?py extend("layout.html") ?>
+<?py block "title": ?>Add Themes<?py endblock ?>
+<?py block "content": ?>
+<h1 class="heading">Add Themes</h1>
+<a class="page-title-action" href="/py-admin/themes.py">Back to Themes</a>
+<?py if error: ?><div class="notice notice-error"><p><?= error ?></p></div><?py end ?>
+
+<section class="card">
+  <h2>Upload a theme (.zip)</h2>
+  <div class="inside">
+    <p class="muted">The zip is extracted into the themes folder. It needs <code>theme.py</code> and <code>index.html</code> (a child theme only needs <code>theme.py</code> with <code>THEME_PARENT</code>). Maximum <?= max_mb ?> MB.</p>
+    <form method="POST" action="/py-admin/theme-install.py" enctype="multipart/form-data">
+      <input type="hidden" name="_csrf" value="<?= csrf_token ?>">
+      <div class="form-field"><input type="file" name="file" accept=".zip" required></div>
+      <div class="form-field"><label><input type="checkbox" name="activate" value="1" checked> Activate after installing (deactivates the current theme)</label></div>
+      <button class="button button-primary">Install Now</button>
+    </form>
+  </div>
+</section>
+
+<section class="card">
+  <h2>Create a child theme</h2>
+  <div class="inside">
+    <p class="muted">A child theme inherits templates, layout and assets from its parent. Put a template with the same name in the child folder to override it, and add your own hooks in the child's <code>theme.py</code>. Updates to the parent never overwrite your changes.</p>
+    <form method="POST" action="/py-admin/theme-install.py">
+      <input type="hidden" name="_csrf" value="<?= csrf_token ?>"><input type="hidden" name="action" value="child">
+      <div class="form-field"><label for="parent">Parent theme</label>
+        <select id="parent" name="parent"><?py for p in parents: ?><option value="<?= p.slug ?>"><?= p.name ?></option><?py end ?></select></div>
+      <div class="form-field"><label for="child-name">Child theme name</label><input type="text" id="child-name" name="name" class="regular-text" value="<?= form.get('name', '') ?>" required></div>
+      <div class="form-field"><label><input type="checkbox" name="activate" value="1"> Activate after creating</label></div>
+      <button class="button button-primary">Create Child Theme</button>
+    </form>
+  </div>
+</section>
+<?py endblock ?>

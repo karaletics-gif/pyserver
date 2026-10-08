@@ -43,6 +43,10 @@ _BUILTIN: dict[str, dict[str, Any]] = {
         "label": "Pages", "singular": "Page", "icon": "\u2750", "menu_position": 20,
         "public": True, "view_url": "/pages/{slug}",
     },
+    "pattern": {
+        "label": "Patterns", "singular": "Pattern", "icon": "\u25a6", "menu_position": 99,
+        "show_in_menu": False, "public": False, "view_url": "",
+    },
 }
 
 

@@ -1,17 +1,42 @@
 <?py extend("layout.html") ?>
 <?py block "title": ?>Themes<?py endblock ?>
 <?py block "content": ?>
-<h1 class="heading">Themes</h1>
-<p class="muted">Active theme: <?= active_theme.name ?></p>
-<section class="card">
-  <?py for theme in themes: ?>
-  <div class="theme-card">
-    <span><strong><?= theme.name ?></strong> <span class="muted">v<?= theme.version ?> &middot; <?= theme.description ?></span></span>
-    <form class="inline" method="POST" action="/admin/theme">
-      <input type="hidden" name="_csrf" value="<?= csrf_token ?>"><input type="hidden" name="theme" value="<?= theme.slug ?>">
-      <?py if theme.slug == active_theme.slug: ?><button class="button" disabled>Active</button><?py else: ?><button class="button button-primary">Activate</button><?py end ?>
-    </form>
+<h1 class="heading">Themes <span class="count-pill"><?= total ?></span></h1>
+<a class="page-title-action" href="/py-admin/theme-install.py">Add Theme</a>
+
+<div class="tablenav">
+  <span class="muted">Only one theme is active at a time; activating a theme deactivates the others.</span>
+  <form method="GET" action="/py-admin/themes.py" class="search-box">
+    <label for="theme-search" class="muted">Search installed themes</label>
+    <input type="search" id="theme-search" name="s" value="<?= search ?>">
+  </form>
+</div>
+
+<div class="theme-grid">
+  <?py for c in cards: ?>
+  <div class="theme-tile<?py if c['is_active']: ?> active<?py end ?>">
+    <div class="shot">
+      <?py if c['screenshot']: ?><img src="<?= c['screenshot'] ?>" alt="<?= c['name'] ?>"><?py else: ?><span><?= c['name'] ?></span><?py end ?>
+    </div>
+    <div class="info">
+      <strong><?py if c['is_active']: ?><span class="muted">Active:</span> <?py end ?><?= c['name'] ?></strong>
+      <span class="muted">v<?= c['version'] ?><?py if c['author']: ?> &middot; <?= c['author'] ?><?py end ?></span>
+      <?py if c['parent_name']: ?><span class="status-pill">Child of <?= c['parent_name'] ?></span><?py end ?>
+      <?py if c['missing_parent']: ?><span class="status-pill" style="background:#fcf0f1;color:#b32d2e">Parent theme missing</span><?py end ?>
+      <?py if c['description']: ?><span class="muted"><?= c['description'] ?></span><?py end ?>
+    </div>
+    <div class="actions">
+      <?py if c['is_active']: ?>
+        <a class="button" href="/py-admin/customize.py">Customize</a>
+      <?py else: ?>
+        <form class="inline" method="POST" action="/admin/theme"><input type="hidden" name="_csrf" value="<?= csrf_token ?>"><input type="hidden" name="theme" value="<?= c['slug'] ?>"><button class="button button-primary"<?py if c['missing_parent']: ?> disabled<?py end ?>>Activate</button></form>
+        <?py if c['deletable']: ?>
+        <form class="inline" method="POST" action="/py-admin/themes.py" onsubmit="return confirm('Delete this theme permanently?')"><input type="hidden" name="_csrf" value="<?= csrf_token ?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="slug" value="<?= c['slug'] ?>"><button class="button-link-delete">Delete</button></form>
+        <?py end ?>
+      <?py end ?>
+    </div>
   </div>
   <?py end ?>
-</section>
+  <a class="theme-tile add-new" href="/py-admin/theme-install.py"><span class="plus">+</span><span>Add Theme</span></a>
+</div>
 <?py endblock ?>

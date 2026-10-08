@@ -69,7 +69,7 @@ def bar_item(key: str, label: str, url: str = "#", align: str = "left", position
 
 def type_key(slug: str) -> str:
     """Menu section key for a post type (kept as posts/pages for the built-ins)."""
-    return {"post": "posts", "page": "pages"}.get(slug, slug)
+    return {"post": "posts", "page": "pages", "pattern": "appearance"}.get(slug, slug)
 
 
 def type_urls(slug: str) -> tuple[str, str]:

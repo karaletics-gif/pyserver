@@ -1,0 +1,25 @@
+<?py extend("layout.html") ?>
+<?py block "title": ?>Menus<?py endblock ?>
+<?py block "content": ?>
+<h1 class="heading">Menus</h1>
+<p class="muted">Menus replace the theme's navigation links. Leave a menu empty to keep the theme's defaults. Use paths such as <code>/posts</code> or full <code>https://</code> addresses.</p>
+<form method="POST" action="/py-admin/nav-menus.py">
+  <input type="hidden" name="_csrf" value="<?= csrf_token ?>">
+  <?py for slug, label, items in locations: ?>
+  <section class="card">
+    <h2><?= label ?></h2>
+    <div class="inside">
+      <div id="menu-<?= slug ?>">
+        <?py for i, item in enumerate(items): ?>
+        <div data-row class="row-edit"><input type="text" name="m_<?= slug ?>_<?= i ?>_label" value="<?= item['label'] ?>" placeholder="Label"><input type="text" name="m_<?= slug ?>_<?= i ?>_url" value="<?= item['url'] ?>" placeholder="/path or https://"><button type="button" class="button-link-delete" data-remove-row>Remove</button></div>
+        <?py end ?>
+      </div>
+      <template id="menu-<?= slug ?>-template"><div data-row class="row-edit"><input type="text" name="m_<?= slug ?>___i___label" placeholder="Label"><input type="text" name="m_<?= slug ?>___i___url" placeholder="/path or https://"><button type="button" class="button-link-delete" data-remove-row>Remove</button></div></template>
+      <p><button type="button" class="button" data-add-row="menu-<?= slug ?>">Add menu item</button></p>
+    </div>
+  </section>
+  <?py end ?>
+  <button class="button button-primary">Save Menus</button>
+</form>
+<script src="/py-admin/assets/admin.js"></script>
+<?py endblock ?>

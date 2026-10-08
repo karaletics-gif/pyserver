@@ -216,6 +216,23 @@ def check_pin(errors, form, request):
     return errors + ([] if form.get("pin") == "1234" else ["Wrong PIN."])
 ```
 
+### Appearance
+
+| Screen | URL | What it does |
+| --- | --- | --- |
+| Themes | `/py-admin/themes.py` | Grid of installed themes with screenshot, Activate, Delete and Customize. Only one theme is active; activating one deactivates the rest. The active theme and its parent cannot be deleted. |
+| Add Theme | `/py-admin/theme-install.py` | Upload a `.zip` (extracted into `themes/`, optionally activated) or create a child theme. |
+| Patterns | `/py-admin/edit.py?post_type=pattern` | Reusable content snippets. |
+| Customize | `/py-admin/customize.py` | Site title, tagline, accent colour, additional CSS. |
+| Widgets | `/py-admin/widgets.py` | Text or HTML widgets for the theme's widget areas (the Footer area is shown automatically). |
+| Fonts, Header, Background | `/py-admin/fonts.py`, `header.py`, `background.py` | Font choices, header text and logo, background colour and image. |
+| Menus | `/py-admin/nav-menus.py` | Primary and footer menus that replace the theme's default links. |
+| Theme File Editor | `/py-admin/theme-editor.py` | Edit theme files; Python files are syntax-checked and the active theme reloads on save. Disable with `DISALLOW_FILE_EDIT=true`. |
+
+**Theme zip format:** one folder (or the files directly) containing `theme.py` and `index.html`; an optional `screenshot.png` is shown in the grid. Unsafe paths, symlinks, oversized archives and existing theme names are rejected.
+
+**Child themes:** a child theme sets `THEME_PARENT = "<parent-slug>"` in its `theme.py`. It inherits the parent's templates, partials and assets; a template with the same name in the child overrides the parent's. The child's `theme.py` runs before the parent's, so its hooks and `setdefault` context values take precedence. Only one level of parent is supported. Themes can also declare `THEME_SUPPORTS` (a set such as `{"menus", "widgets", "customize"}`) to hide unsupported screens and `THEME_WIDGET_AREAS` for their widget areas.
+
 ### Custom post types, admin menu and admin bar (developers)
 
 From a theme's `theme.py` or any plugin code, using the shared `hooks` registry:

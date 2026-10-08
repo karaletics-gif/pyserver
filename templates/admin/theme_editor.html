@@ -1,0 +1,20 @@
+<?py extend("layout.html") ?>
+<?py block "title": ?>Edit Themes<?py endblock ?>
+<?py block "content": ?>
+<h1 class="heading">Edit Themes</h1>
+<?py if error: ?><div class="notice notice-error"><p><?= error ?></p></div><?py end ?>
+<p class="muted">Editing <code><?= filename ?></code><?py if is_active: ?> (active theme)<?py end ?>. Changes to the active theme reload it immediately. Python files are checked for syntax errors before saving.</p>
+<div class="editor-layout">
+  <form method="POST" action="/py-admin/theme-editor.py" class="editor-main">
+    <input type="hidden" name="_csrf" value="<?= csrf_token ?>"><input type="hidden" name="theme" value="<?= slug ?>"><input type="hidden" name="file" value="<?= filename ?>">
+    <textarea name="content" rows="28" spellcheck="false" style="font-family:monospace;width:100%"><?= content ?></textarea>
+    <p><button class="button button-primary">Update File</button></p>
+  </form>
+  <aside class="editor-files">
+    <form method="GET" action="/py-admin/theme-editor.py"><label for="theme-select">Select theme to edit:</label>
+      <select id="theme-select" name="theme" onchange="this.form.submit()"><?py for t in themes: ?><option value="<?= t.slug ?>"<?py if t.slug == slug: ?> selected<?py end ?>><?= t.name ?></option><?py end ?></select></form>
+    <h3>Theme Files</h3>
+    <ul><?py for f in files: ?><li><a href="<?= file_urls[f] ?>"<?py if f == filename: ?> class="current"<?py end ?>><?= f ?></a></li><?py end ?></ul>
+  </aside>
+</div>
+<?py endblock ?>
