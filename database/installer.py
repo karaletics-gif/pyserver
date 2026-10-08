@@ -232,14 +232,19 @@ class InstallerRouter:
             return self._admin_error(request, session, str(exc))
 
         try:
-            create_admin_user(name, email, password, allow_weak=allow_weak)
+            admin = create_admin_user(name, email, password, allow_weak=allow_weak)
             self._write_config(config)
         except Exception as exc:
             return self._admin_error(request, session, f"Could not finish installation: {exc}")
 
+        from modules.auth.sessions import sessions
+        token = sessions.create(
+            user_id=admin.id, email=admin.email, role=admin.role, name=admin.name,
+        )
         self._pending.pop(session, None)
         self._tokens.pop(session, None)
         response = Response.redirect("/py-admin")
+        response.set_cookie(sessions.make_cookie(token))
         response.set_cookie("pyinstall=; Max-Age=0; Path=/; HttpOnly; SameSite=Lax")
         return response
 

@@ -83,7 +83,7 @@ check("has publish button (editor)",     "publish" in r.body.lower())
 check("default theme layout",            "<!DOCTYPE" in r.body)
 
 r = go("GET", "/posts/new")
-check("anon: 401",                       r.status == 401)
+check("anon: 302",                       r.status == 302)
 
 r = go("GET", "/posts/new", cookie=m_sess)
 check("member: 403",                     r.status == 403)

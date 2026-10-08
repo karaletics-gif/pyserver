@@ -183,7 +183,7 @@ r = go("GET", "/dashboard")
 check("dashboard → 302 anon",    r.status == 302)
 
 r = go("GET", "/py-admin")
-check("admin → 401 anon",        r.status == 401)
+check("admin → 302 anon",        r.status == 302)
 
 r = go("GET", "/py-admin", cookie=m_sess)
 check("admin → 403 member",      r.status == 403)

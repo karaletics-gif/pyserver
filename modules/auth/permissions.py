@@ -111,10 +111,8 @@ def require_capability(capability: str):
             from core.response import Response
             user = getattr(request, "user", None)
             if user is None:
-                return Response.html(
-                    "<h1>401 – Authentication required</h1>",
-                    status=401,
-                ).set_header("Location", "/login")
+                from modules.auth.login_page import login_url
+                return Response.redirect(login_url(request))
             if not can(user, capability):
                 return Response.html(
                     f"<h1>403 – Forbidden</h1>"

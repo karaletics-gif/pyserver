@@ -99,6 +99,7 @@ For local SQLite-only development and the test suite, set `DB_PATH` explicitly (
 | `/search?q=<term>` | Search published post titles and bodies | Public |
 | `/register` | Create a member account | Public |
 | `/login` | Sign in | Public |
+| `/py-login` | Admin/editor sign in; unauthenticated visits to protected admin routes redirect here with `?next=` | Public |
 | `/logout` | Sign out | POST form action |
 | `/dashboard` | Account dashboard and recent posts | Signed-in |
 | `/posts/new` | Create a post | Editor or Admin |
