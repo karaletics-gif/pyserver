@@ -1,0 +1,14 @@
+<?py extend("layout.html") ?>
+<?py block "title": ?>Upload New Media<?py endblock ?>
+<?py block "content": ?>
+<h1 class="heading">Upload New Media</h1>
+<?py if error: ?><div class="notice notice-error"><p><?= error ?></p></div><?py end ?>
+<section class="card"><div class="inside">
+  <form method="POST" action="/py-admin/media-new.py" enctype="multipart/form-data">
+    <input type="hidden" name="_csrf" value="<?= csrf_token ?>">
+    <div class="form-field"><label for="file">Select a file</label><input type="file" id="file" name="file" required></div>
+    <p class="muted">Maximum size: <?= max_mb ?> MB. Allowed types: <?= allowed ?>.</p>
+    <button class="button button-primary">Upload</button>
+  </form>
+</div></section>
+<?py endblock ?>

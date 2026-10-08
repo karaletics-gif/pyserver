@@ -19,6 +19,7 @@ class Request:
 
         # Parsed lazily
         self._form:   dict | None = None
+        self._files:  dict | None = None
         self._json:   object      = _MISSING
 
     # ── Query string ─────────────────────────────────────────────────────────
@@ -42,12 +43,14 @@ class Request:
     @property
     def form(self) -> dict:
         """
-        Parse application/x-www-form-urlencoded body.
+        Parse application/x-www-form-urlencoded or multipart/form-data text fields.
         Returns an empty dict for other content types.
         """
         if self._form is None:
             ct = self.headers.get("Content-Type", "")
-            if "application/x-www-form-urlencoded" in ct and self.body:
+            if "multipart/form-data" in ct:
+                self._parse_multipart()
+            elif "application/x-www-form-urlencoded" in ct and self.body:
                 self._form = {}
                 for pair in self.body.decode("utf-8", errors="replace").split("&"):
                     if "=" in pair:
@@ -56,6 +59,35 @@ class Request:
             else:
                 self._form = {}
         return self._form
+
+    @property
+    def files(self) -> dict:
+        """Uploaded files from multipart bodies: name -> (filename, content_type, bytes)."""
+        if self._files is None:
+            self._parse_multipart()
+        return self._files
+
+    def _parse_multipart(self) -> None:
+        from email.parser import BytesParser
+        from email.policy import HTTP
+
+        self._form, self._files = {}, {}
+        ct = self.headers.get("Content-Type", "")
+        if "multipart/form-data" not in ct or not self.body:
+            return
+        message = BytesParser(policy=HTTP).parsebytes(
+            b"Content-Type: " + ct.encode() + b"\r\n\r\n" + self.body
+        )
+        for part in message.iter_parts():
+            name = part.get_param("name", header="content-disposition")
+            if not name:
+                continue
+            payload = part.get_payload(decode=True) or b""
+            filename = part.get_filename()
+            if filename is not None:
+                self._files[name] = (filename, part.get_content_type(), payload)
+            else:
+                self._form[name] = payload.decode("utf-8", errors="replace")
 
     # ── JSON body ─────────────────────────────────────────────────────────────
 

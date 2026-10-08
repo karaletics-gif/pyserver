@@ -104,7 +104,14 @@ For local SQLite-only development and the test suite, set `DB_PATH` explicitly (
 | `/dashboard` | Account dashboard and recent posts | Signed-in |
 | `/posts/new` | Create a post | Editor or Admin |
 | `/posts/<slug>/edit` | Edit a post and review/restore revisions | Editor or Admin |
-| `/py-admin` | WordPress-style admin dashboard, users, settings, and themes | Admin |
+| `/py-admin` | Admin dashboard (same as `/py-admin/index.py`) | Admin |
+| `/py-admin/edit.py` | Posts list; `?post_type=page` for pages; `post_status`, `s`, `paged` filters | Admin |
+| `/py-admin/post-new.py?post_type=page`, `/py-admin/post.py?post=<id>` | Add or edit a page | Admin |
+| `/py-admin/upload.py`, `/py-admin/media-new.py` | Media library and upload (files stored in `UPLOAD_DIR`) | Admin |
+| `/py-admin/edit-comments.py` | Comments | Admin |
+| `/py-admin/themes.py` | Appearance: switch themes | Admin |
+| `/py-admin/users.py` | Users and roles | Admin |
+| `/py-admin/tools.py`, `/py-admin/options-general.py` | Tools and general settings | Admin |
 | `/py-admin/users/<id>/edit` | Edit a user's profile and admin personal options | Admin |
 | `/admin` | Compatibility redirect to `/py-admin` | Any visitor |
 | `/account/password` | Change the signed-in account password | Signed-in |

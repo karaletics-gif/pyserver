@@ -1,0 +1,57 @@
+<?py extend("layout.html") ?>
+<?py block "title": ?>Dashboard<?py endblock ?>
+<?py block "content": ?>
+<h1 class="heading">Dashboard</h1>
+<div class="dash-grid">
+  <section class="card">
+    <h2>At a Glance</h2>
+    <div class="inside">
+      <ul class="glance">
+        <li><a href="/py-admin/edit.py"><?= stats["posts"] ?> Posts</a></li>
+        <li><a href="/py-admin/edit.py?post_type=page"><?= stats["pages"] ?> Pages</a></li>
+        <li><a href="/py-admin/edit.py?post_status=published"><?= stats["published"] ?> Published</a></li>
+        <li><a href="/py-admin/edit.py?post_status=draft"><?= stats["drafts"] ?> Drafts</a></li>
+        <li><a href="/py-admin/upload.py"><?= stats["media"] ?> Media files</a></li>
+        <li><a href="/py-admin/edit-comments.py"><?= stats["comments"] ?> Comments</a></li>
+        <?py for t in type_counts: ?><li><a href="<?= t['url'] ?>"><?= t['count'] ?> <?= t['label'] ?></a></li><?py end ?>
+        <li><a href="/py-admin/users.py"><?= stats["users"] ?> Users</a></li>
+      </ul>
+      <p class="muted">Theme: <a href="/py-admin/themes.py"><?= active_theme.name ?></a></p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Quick Draft</h2>
+    <div class="inside">
+      <form method="POST" action="/posts/new">
+        <input type="hidden" name="_csrf" value="<?= csrf_token ?>">
+        <div class="form-field"><label for="quick-title">Title</label><input type="text" id="quick-title" name="title" style="width:100%" required></div>
+        <div class="form-field"><label for="quick-body">Content</label><textarea id="quick-body" name="body" rows="4" placeholder="What's on your mind?" required></textarea></div>
+        <button class="button button-primary" name="action" value="save">Save Draft</button>
+      </form>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Activity</h2>
+    <div class="inside">
+      <?py if recent_posts: ?>
+        <?py for p in recent_posts: ?>
+        <div class="activity-item"><a href="/posts/<?= p.slug ?>/edit"><?= p.title ?></a><span class="muted"><?= p.status ?> &middot; <?= p.updated_at[:10] ?></span></div>
+        <?py end ?>
+      <?py else: ?><p class="muted">No posts yet.</p><?py end ?>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2>Recent Comments</h2>
+    <div class="inside">
+      <?py if recent_comments: ?>
+        <?py for c in recent_comments: ?>
+        <div class="activity-item"><span><strong><?= c.comment_author ?></strong>: <?= c.comment_content[:100] ?></span></div>
+        <?py end ?>
+      <?py else: ?><p class="muted">No comments yet.</p><?py end ?>
+    </div>
+  </section>
+</div>
+<?py endblock ?>

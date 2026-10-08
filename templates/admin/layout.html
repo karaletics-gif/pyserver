@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title><?py block "title": ?>Dashboard<?py endblock ?> &lsaquo; <?= site_name ?> &#8212; PyServer</title>
+  <link rel="stylesheet" href="/py-admin/assets/admin.css">
+</head>
+<body class="py-admin">
+<div id="adminbar">
+  <a class="logo" href="/py-admin/index.py" title="PyServer">Py</a>
+  <?py for b in bar_left: ?>
+  <span class="bar-item">
+    <a href="<?= b['url'] ?>"><?= b['label'] ?><?py if b.get('badge') is not None: ?> <span class="badge"><?= b['badge'] ?></span><?py end ?></a>
+    <?py if b['children']: ?><span class="bar-sub"><?py for c in b['children']: ?><a href="<?= c['url'] ?>"><?= c['label'] ?></a><?py end ?></span><?py end ?>
+  </span>
+  <?py end ?>
+  <span class="spacer"></span>
+  <?py for b in bar_right: ?>
+  <span class="bar-item">
+    <a href="<?= b['url'] ?>"><?= b['label'] ?><?py if b.get('badge') is not None: ?> <span class="badge"><?= b['badge'] ?></span><?py end ?></a>
+    <?py if b['children']: ?><span class="bar-sub right"><?py for c in b['children']: ?><a href="<?= c['url'] ?>"><?= c['label'] ?></a><?py end ?></span><?py end ?>
+  </span>
+  <?py end ?>
+  <form method="POST" action="/logout"><input type="hidden" name="_csrf" value="<?= csrf_token ?>"><button type="submit">Log Out</button></form>
+</div>
+
+<nav id="sidebar" aria-label="Administration navigation">
+  <ul>
+    <?py for m in menu: ?>
+    <li class="<?py if m['active']: ?>active<?py end ?>">
+      <a href="<?= m['url'] ?>"><span class="ico"><?= m['icon'] ?></span><span class="label"><?= m['label'] ?></span></a>
+      <?py if m['children']: ?>
+      <div class="submenu">
+        <?py for c in m['children']: ?><a href="<?= c['url'] ?>"<?py if c['active']: ?> class="current"<?py end ?>><?= c['label'] ?></a><?py end ?>
+      </div>
+      <?py end ?>
+    </li>
+    <?py end ?>
+  </ul>
+  <button type="button" class="collapse" id="collapse-menu"><span class="ico">&#9664;</span><span class="label">Collapse Menu</span></button>
+</nav>
+
+<div id="content-wrap">
+  <main id="content">
+    <?py if flash_err: ?><div class="notice notice-error"><p><?= flash_err ?></p></div><?py end ?>
+    <?py if flash_ok: ?><div class="notice notice-success"><p><?= flash_ok ?></p></div><?py end ?>
+    <?py block "content": ?><?py endblock ?>
+  </main>
+</div>
+<script>
+(function () {
+  var body = document.body, key = "py-admin-folded";
+  if (localStorage.getItem(key) === "1") body.classList.add("folded");
+  document.getElementById("collapse-menu").addEventListener("click", function () {
+    body.classList.toggle("folded");
+    localStorage.setItem(key, body.classList.contains("folded") ? "1" : "0");
+  });
+})();
+</script>
+</body>
+</html>

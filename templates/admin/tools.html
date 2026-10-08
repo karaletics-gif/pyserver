@@ -1,0 +1,9 @@
+<?py extend("layout.html") ?>
+<?py block "title": ?>Tools<?py endblock ?>
+<?py block "content": ?>
+<h1 class="heading">Tools</h1>
+<section class="card"><h2>Site information</h2><div class="inside">
+  <p>Database tables use the <code>py_</code> prefix and are created or migrated automatically at startup.</p>
+  <p>Media uploads are stored in <code><?= upload_dir ?></code>.</p>
+</div></section>
+<?py endblock ?>

@@ -216,6 +216,37 @@ def check_pin(errors, form, request):
     return errors + ([] if form.get("pin") == "1234" else ["Wrong PIN."])
 ```
 
+### Custom post types, admin menu and admin bar (developers)
+
+From a theme's `theme.py` or any plugin code, using the shared `hooks` registry:
+
+```python
+from cms.content.post_types import register_post_type
+from modules.admin.menu import menu_item, submenu_item, bar_item
+
+register_post_type("event", label="Events", singular="Event", icon="*", menu_position=22)
+# or: @hooks.filter("post_types.register") and add/modify entries in the dict
+
+@hooks.filter("admin.menu")            # add a top-level sidebar item
+def reports(items, request):
+    items.append(menu_item("reports", "Reports", "/py-admin/tools.py", position=65,
+                           children=[submenu_item("Overview", "/py-admin/tools.py", "all")]))
+    return items
+
+@hooks.filter("admin.submenu")         # add a sub menu to an existing item
+def user_links(children, parent_key, request):
+    if parent_key == "users":
+        children.append(submenu_item("Invitations", "/py-admin/users.py", "invites"))
+    return children
+
+@hooks.filter("admin.bar")             # add to the top admin bar
+def bar(items, request):
+    items.append(bar_item("help", "Help", "/docs", align="right"))
+    return items
+```
+
+A registered type gets its own menu entry, list screen (`/py-admin/edit.py?post_type=event`), editor, dashboard count, and public URL (`/content/event/<slug>`, configurable with `view_url`). The full list of type options is documented in `cms/content/post_types.py`.
+
 ## 11. Themes
 
 Themes live in `themes/<name>/` with `index.html`, `editor.html`, `theme.py`, and an `assets/` folder served at `/themes/<name>/assets/<file>`. Bundled themes are **Default** and **Minimal**. To add one, copy a bundled theme folder, rename it, edit `theme.py` and the templates, then select it under Themes.

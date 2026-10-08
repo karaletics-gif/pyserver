@@ -191,9 +191,12 @@ check("admin session set",     admin_sess is not None)
 
 r = dispatch("GET", "/py-admin", cookie=f"pysess={admin_sess}")
 check("admin panel 200",            r.status == 200)
-check("shows users table",          "Users" in r.body)
-check("shows settings form",        "Site" in r.body or "settings" in r.body.lower())
+check("shows dashboard widgets",    "At a Glance" in r.body and "Quick Draft" in r.body)
+r = dispatch("GET", "/py-admin/users.py", cookie=f"pysess={admin_sess}")
+check("shows users table",          r.status == 200 and "Users" in r.body)
 check("shows role selects",         "role" in r.body.lower())
+r = dispatch("GET", "/py-admin/options-general.py", cookie=f"pysess={admin_sess}")
+check("shows settings form",        r.status == 200 and "Site Title" in r.body)
 
 profile_path = f"/py-admin/users/{real_admin.id}/edit"
 r = dispatch("GET", profile_path, cookie=f"pysess={admin_sess}")

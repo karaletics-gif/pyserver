@@ -8,6 +8,7 @@ venv/
 .venv/
 .env
 instance/
+uploads/
 *.tmp
 
 # Database

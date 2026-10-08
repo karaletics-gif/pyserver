@@ -1,0 +1,31 @@
+<?py extend("layout.html") ?>
+<?py block "title": ?>Users<?py endblock ?>
+<?py block "content": ?>
+<h1 class="heading">Users</h1>
+<ul class="subsubsub">
+  <?py for s in role_links: ?><li><a href="<?= s['url'] ?>"<?py if s['current']: ?> class="current"<?py end ?>><?= s['label'] ?> <span class="muted">(<?= s['count'] ?>)</span></a></li><?py end ?>
+</ul>
+<table class="wp-list-table">
+  <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th>Actions</th></tr></thead>
+  <tbody>
+  <?py for user in users: ?>
+  <tr>
+    <td class="title"><strong><a href="/py-admin/users/<?= user.id ?>/edit"><?= user.name ?></a></strong></td>
+    <td><?= user.email ?></td>
+    <td>
+      <form class="inline" method="POST" action="/admin/users/<?= user.id ?>/role">
+        <input type="hidden" name="_csrf" value="<?= csrf_token ?>">
+        <select name="role" aria-label="Role for <?= user.name ?>"><?py for role in role_options: ?><option value="<?= role ?>"<?py if role == user.role: ?> selected<?py end ?>><?= role ?></option><?py end ?></select>
+        <button class="button">Change</button>
+      </form>
+    </td>
+    <td><?py if user.active: ?>Active<?py else: ?>Inactive<?py end ?></td>
+    <td>
+      <a href="/py-admin/users/<?= user.id ?>/edit">Edit</a> |
+      <form class="inline" method="POST" action="/admin/users/<?= user.id ?>/toggle"><input type="hidden" name="_csrf" value="<?= csrf_token ?>"><button class="button-link-delete"><?py if user.active: ?>Deactivate<?py else: ?>Activate<?py end ?></button></form>
+    </td>
+  </tr>
+  <?py end ?>
+  </tbody>
+</table>
+<?py endblock ?>

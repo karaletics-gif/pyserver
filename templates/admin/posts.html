@@ -1,0 +1,55 @@
+<?py extend("layout.html") ?>
+<?py block "title": ?><?= list_title ?><?py endblock ?>
+<?py block "content": ?>
+<h1 class="heading"><?= list_title ?></h1>
+<a class="page-title-action" href="<?= new_url ?>"><?= new_label ?></a>
+
+<ul class="subsubsub">
+  <?py for s in status_links: ?><li><a href="<?= s['url'] ?>"<?py if s['current']: ?> class="current"<?py end ?>><?= s['label'] ?> <span class="muted">(<?= s['count'] ?>)</span></a></li><?py end ?>
+</ul>
+
+<div class="tablenav">
+  <form method="GET" action="/py-admin/edit.py" class="search-box">
+    <?py if post_type != "post": ?><input type="hidden" name="post_type" value="<?= post_type ?>"><?py end ?>
+    <input type="search" name="s" value="<?= search ?>" aria-label="Search">
+    <button class="button">Search <?= list_title ?></button>
+  </form>
+  <span class="muted"><?= total ?> items</span>
+</div>
+
+<table class="wp-list-table">
+  <thead><tr><th>Title</th><th>Author</th><th>Status</th><th>Date</th></tr></thead>
+  <tbody>
+  <?py if entries: ?>
+    <?py for e in entries: ?>
+    <tr>
+      <td class="title">
+        <strong><a href="<?= e['edit_url'] ?>"><?= e['post'].title ?></a></strong>
+        <div class="row-actions">
+          <a href="<?= e['edit_url'] ?>">Edit</a> |
+          <form class="inline" method="POST" action="/py-admin/edit.py<?py if post_type != 'post': ?>?post_type=<?= post_type ?><?py end ?>" onsubmit="return confirm('Delete this item permanently?')">
+            <input type="hidden" name="_csrf" value="<?= csrf_token ?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= e['post'].id ?>">
+            <button class="button-link-delete">Trash</button>
+          </form><?py if e['view_url']: ?> |
+          <a href="<?= e['view_url'] ?>">View</a><?py end ?>
+        </div>
+      </td>
+      <td><?= e['author'] ?></td>
+      <td><span class="status-pill status-<?= e['post'].status ?>"><?= e['post'].status ?></span></td>
+      <td><?= e['date_label'] ?><br><span class="muted"><?= e['date'] ?></span></td>
+    </tr>
+    <?py end ?>
+  <?py else: ?>
+    <tr><td colspan="4">No <?= list_title.lower() ?> found.</td></tr>
+  <?py end ?>
+  </tbody>
+</table>
+
+<div class="tablenav">
+  <span class="muted">Page <?= paged ?> of <?= pages ?></span>
+  <span>
+    <?py if prev_url: ?><a class="button" href="<?= prev_url ?>">&lsaquo; Previous</a><?py end ?>
+    <?py if next_url: ?><a class="button" href="<?= next_url ?>">Next &rsaquo;</a><?py end ?>
+  </span>
+</div>
+<?py endblock ?>

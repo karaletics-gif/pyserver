@@ -1,0 +1,17 @@
+<?py extend("layout.html") ?>
+<?py block "title": ?>Themes<?py endblock ?>
+<?py block "content": ?>
+<h1 class="heading">Themes</h1>
+<p class="muted">Active theme: <?= active_theme.name ?></p>
+<section class="card">
+  <?py for theme in themes: ?>
+  <div class="theme-card">
+    <span><strong><?= theme.name ?></strong> <span class="muted">v<?= theme.version ?> &middot; <?= theme.description ?></span></span>
+    <form class="inline" method="POST" action="/admin/theme">
+      <input type="hidden" name="_csrf" value="<?= csrf_token ?>"><input type="hidden" name="theme" value="<?= theme.slug ?>">
+      <?py if theme.slug == active_theme.slug: ?><button class="button" disabled>Active</button><?py else: ?><button class="button button-primary">Activate</button><?py end ?>
+    </form>
+  </div>
+  <?py end ?>
+</section>
+<?py endblock ?>

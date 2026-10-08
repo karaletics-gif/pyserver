@@ -1,0 +1,14 @@
+<?py extend("layout.html") ?>
+<?py block "title": ?>General Settings<?py endblock ?>
+<?py block "content": ?>
+<h1 class="heading">General Settings</h1>
+<section class="card"><div class="inside">
+  <form method="POST" action="/admin/settings">
+    <input type="hidden" name="_csrf" value="<?= csrf_token ?>">
+    <?py for key, label, value in settings_fields: ?>
+    <div class="form-field"><label for="<?= key ?>"><?= label ?></label><input type="text" id="<?= key ?>" name="<?= key ?>" class="regular-text" value="<?= value ?>"></div>
+    <?py end ?>
+    <button class="button button-primary">Save Changes</button>
+  </form>
+</div></section>
+<?py endblock ?>

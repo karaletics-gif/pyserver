@@ -1,0 +1,22 @@
+<?py extend("layout.html") ?>
+<?py block "title": ?><?py if item: ?>Edit <?= type_singular ?><?py else: ?>Add <?= type_singular ?><?py end ?><?py endblock ?>
+<?py block "content": ?>
+<h1 class="heading"><?py if item: ?>Edit <?= type_singular ?><?py else: ?>Add <?= type_singular ?><?py end ?></h1>
+<?py if error: ?><div class="notice notice-error"><p><?= error ?></p></div><?py end ?>
+<form method="POST" action="<?py if item: ?>/py-admin/post.py?post=<?= item.id ?><?py else: ?>/py-admin/post-new.py?post_type=<?= post_type ?><?py end ?>">
+  <input type="hidden" name="_csrf" value="<?= csrf_token ?>">
+  <div class="form-field"><input type="text" name="title" placeholder="Add title" style="width:100%;font-size:20px;padding:6px 10px" value="<?= form.get('title', item.title if item else '') ?>" required></div>
+  <div class="form-field"><textarea name="body" rows="16" placeholder="Content"><?= form.get('body', item.body if item else '') ?></textarea></div>
+  <div class="form-field"><label for="slug">Slug</label><input type="text" id="slug" name="slug" class="regular-text" value="<?= form.get('slug', item.slug if item else '') ?>"></div>
+  <button class="button" name="action" value="save">Save Draft</button>
+  <?py if can_publish: ?>
+    <?py if item and item.status == "published": ?>
+      <button class="button button-primary" name="action" value="save">Update</button>
+      <button class="button" name="action" value="unpublish">Switch to Draft</button>
+    <?py else: ?>
+      <button class="button button-primary" name="action" value="publish">Publish</button>
+    <?py end ?>
+  <?py end ?>
+  <?py if item and view_url and item.status == "published": ?><a class="button" href="<?= view_url ?>">View <?= type_singular ?></a><?py end ?>
+</form>
+<?py endblock ?>

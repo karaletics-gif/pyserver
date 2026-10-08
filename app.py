@@ -323,6 +323,17 @@ def single_post(request: Request, slug: str) -> Response:
         html = loader.render_404({"current_user": request.user})
         return Response.html(html, status=404)
 
+@router.get("/content/<post_type>/<slug>")
+def custom_type_view(request: Request, post_type: str, slug: str) -> Response:
+    from cms.content.post_types import get_post_type
+    config_type = get_post_type(post_type)
+    item = None
+    if config_type and config_type["public"] and not config_type["builtin"]:
+        item = QuerySet(Post).filter(content_type=post_type, slug=slug).first()
+    if item is None or (item.status != "published" and not request.is_authenticated):
+        return Response.html(loader.render_404({"current_user": request.user}), status=404)
+    return Response.html(theme_render("single", request, {"post": item}))
+
 @router.get("/pages/<slug>")
 def cms_page(request: Request, slug: str) -> Response:
     try:
@@ -432,46 +443,12 @@ def change_pw_page(request: Request) -> Response:
 
 # ── Admin ─────────────────────────────────────────────────────────────────────
 
-def _admin_ctx(request, **extra):
-    return {
-        "users":        QuerySet(User).order_by("created_at").all(),
-        "role_options": ROLE_HIERARCHY,
-        "settings_fields": [
-            ("site_name",      "Site name",      Setting.get_value("site_name","")),
-            ("site_tagline",   "Tagline",        Setting.get_value("site_tagline","")),
-            ("posts_per_page", "Posts per page", Setting.get_value("posts_per_page","10")),
-        ],
-        "themes":       loader.available(),
-        "active_theme": loader.active,
-        **extra,
-    }
+from modules.admin.routes import register_admin_routes
+register_admin_routes(router, admin_render, _redirect_with_flash, loader)
 
 @router.get("/admin")
 def legacy_admin_route(request: Request) -> Response:
     return Response.redirect("/py-admin")
-
-@router.get("/py-admin")
-@require_capability("manage_users")
-def admin_panel(request: Request) -> Response:
-    all_posts = QuerySet(Post).filter(content_type="post").all()
-    recent_comments = QuerySet(Comment).order_by("-created_at").limit(8).all()
-    ctx = _admin_ctx(
-        request,
-        stats={
-            "total": len(all_posts),
-            "published": sum(1 for post in all_posts if post.status == "published"),
-            "drafts": sum(1 for post in all_posts if post.status == "draft"),
-            "pages": QuerySet(Post).filter(content_type="page").count(),
-            "users": QuerySet(User).count(),
-            "comments": QuerySet(Comment).count(),
-        },
-        recent_posts=sorted(all_posts, key=lambda post: post.created_at, reverse=True)[:8],
-        recent_comments=recent_comments,
-        can_write=can(request.user, "write_post"),
-    )
-    resp = Response.html(admin_render("admin.html", request, ctx))
-    clear_flash(resp)
-    return resp
 
 
 @router.any("/py-admin/users/<uid>/edit")
@@ -531,10 +508,9 @@ def admin_edit_user(request: Request, uid: str) -> Response:
 def admin_change_role(request: Request, uid: str) -> Response:
     try:
         update_role(int(uid), request.form.get("role",""), changed_by=request.user)
-        return _redirect_with_flash("/py-admin#users", "Role updated.")
+        return _redirect_with_flash("/py-admin/users.py", "Role updated.")
     except AuthError as e:
-        return Response.html(admin_render("admin.html", request,
-                                          _admin_ctx(request, flash_err=str(e))))
+        return _redirect_with_flash("/py-admin/users.py", str(e), "err")
 
 @router.post("/admin/users/<uid>/toggle")
 @require_capability("manage_users")
@@ -547,7 +523,7 @@ def admin_toggle_user(request: Request, uid: str) -> Response:
         msg = f"User '{u.name}' {'activated' if u.active else 'deactivated'}."
     except Exception as e:
         msg = str(e)
-    return _redirect_with_flash("/py-admin#users", msg)
+    return _redirect_with_flash("/py-admin/users.py", msg)
 
 @router.post("/admin/settings")
 @require_capability("manage_settings")
@@ -555,7 +531,7 @@ def admin_save_settings(request: Request) -> Response:
     for key in ("site_name","site_tagline","posts_per_page"):
         val = request.form.get(key)
         if val is not None: Setting.set_value(key, val.strip())
-    return _redirect_with_flash("/py-admin#settings", "Settings saved.")
+    return _redirect_with_flash("/py-admin/options-general.py", "Settings saved.")
 
 @router.post("/admin/theme")
 @require_capability("manage_settings")
@@ -564,10 +540,9 @@ def admin_switch_theme(request: Request) -> Response:
     try:
         loader.switch(slug)
         Setting.set_value("active_theme", slug)
-        return _redirect_with_flash("/py-admin#themes", f"Theme switched to '{loader.active.name}'.")
+        return _redirect_with_flash("/py-admin/themes.py", f"Theme switched to '{loader.active.name}'.")
     except ThemeError as e:
-        return Response.html(admin_render("admin.html", request,
-                                          _admin_ctx(request, flash_err=f"Theme error: {e}")))
+        return _redirect_with_flash("/py-admin/themes.py", f"Theme error: {e}", "err")
 
 # ── JSON API ──────────────────────────────────────────────────────────────────
 from modules.api.routes import register_api_routes

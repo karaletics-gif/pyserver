@@ -41,6 +41,10 @@ HOST = get("HOST", "127.0.0.1")
 PORT = get_int("PORT", 8080)
 CONFIG_PATH = Path(get("PYSERVER_CONFIG", str(BASE_DIR / "instance" / "pyserver.json")))
 SQLITE_PATH = get("DB_PATH") or None
+UPLOAD_DIR = Path(get("UPLOAD_DIR", "uploads"))
+if not UPLOAD_DIR.is_absolute():
+    UPLOAD_DIR = BASE_DIR / UPLOAD_DIR
+MAX_UPLOAD_MB = get_int("MAX_UPLOAD_MB", 10)
 
 
 def db_defaults() -> dict:

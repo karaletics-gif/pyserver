@@ -1,0 +1,34 @@
+<?py extend("layout.html") ?>
+<?py block "title": ?>Media Library<?py endblock ?>
+<?py block "content": ?>
+<h1 class="heading">Media Library</h1>
+<a class="page-title-action" href="/py-admin/media-new.py">Add Media File</a>
+
+<div class="tablenav">
+  <form method="GET" action="/py-admin/upload.py" class="search-box">
+    <input type="search" name="s" value="<?= search ?>" aria-label="Search media" placeholder="Search media">
+    <button class="button">Search</button>
+  </form>
+  <span class="muted"><?= len(media) ?> files</span>
+</div>
+
+<?py if media: ?>
+<div class="media-grid">
+  <?py for m in media: ?>
+  <div class="media-item">
+    <div class="thumb">
+      <?py if m.post_mime_type.startswith("image/"): ?><a href="<?= m.guid ?>"><img src="<?= m.guid ?>" alt="<?= m.title ?>"></a>
+      <?py else: ?><a href="<?= m.guid ?>"><?= m.post_mime_type ?></a><?py end ?>
+    </div>
+    <div class="meta">
+      <?= m.title ?><br>
+      <form class="inline" method="POST" action="/py-admin/upload.py" onsubmit="return confirm('Delete this file permanently?')">
+        <input type="hidden" name="_csrf" value="<?= csrf_token ?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= m.id ?>">
+        <button class="button-link-delete">Delete permanently</button>
+      </form>
+    </div>
+  </div>
+  <?py end ?>
+</div>
+<?py else: ?><p class="muted">No media files found.</p><?py end ?>
+<?py endblock ?>

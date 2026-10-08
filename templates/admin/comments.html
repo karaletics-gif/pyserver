@@ -1,0 +1,21 @@
+<?py extend("layout.html") ?>
+<?py block "title": ?>Comments<?py endblock ?>
+<?py block "content": ?>
+<h1 class="heading">Comments</h1>
+<table class="wp-list-table">
+  <thead><tr><th>Author</th><th>Comment</th><th>In response to</th><th>Status</th><th>Submitted on</th></tr></thead>
+  <tbody>
+  <?py if comments: ?>
+    <?py for c in comments: ?>
+    <tr>
+      <td><strong><?= c.comment_author ?></strong><br><span class="muted"><?= c.comment_author_email ?></span></td>
+      <td><?= c.comment_content ?></td>
+      <td><?= titles.get(c.comment_post_id, "-") ?></td>
+      <td><span class="status-pill status-<?= c.comment_approved ?>"><?py if c.comment_approved == "1": ?>Approved<?py else: ?>Pending<?py end ?></span></td>
+      <td><?= c.comment_date[:16] ?></td>
+    </tr>
+    <?py end ?>
+  <?py else: ?><tr><td colspan="5">No comments found.</td></tr><?py end ?>
+  </tbody>
+</table>
+<?py endblock ?>
