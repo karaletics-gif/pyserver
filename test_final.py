@@ -12,11 +12,11 @@ import app as _app   # single import
 from urllib.parse import urlencode
 from core.request   import Request
 from core.response  import Response
-from change_password.users.model import User
+from cms.users.model import User
 from modules.auth.passwords  import hash_password
-from change_password.content.models import Post, PostRevision
-from change_password.content.service import create_post, get_revisions
-from change_password.settings.model import Setting
+from cms.content.models import Post, PostRevision
+from cms.content.service import create_post, get_revisions
+from cms.settings.model import Setting
 from database.orm            import QuerySet
 
 Post.create_table()
@@ -211,7 +211,7 @@ check("create draft → 302",      r.status == 302)
 new_slug = r.headers.get("Location", "").split("/posts/")[1].split("/edit")[0]
 check("slug in redirect",        bool(new_slug) and new_slug != "")
 
-from change_password.content.service import get_post_by_slug
+from cms.content.service import get_post_by_slug
 new_post = get_post_by_slug(new_slug)
 check("post saved to DB",        new_post.title == "Test Post")
 check("status = draft",          new_post.status == "draft")
@@ -483,7 +483,7 @@ section("Pagination")
 for i in range(8):
     create_post(f"Page Post {i}", f"<p>body {i}</p>", author_id=admin.id, status="published")
 
-from change_password.settings.model import Setting
+from cms.settings.model import Setting
 Setting.set_value("posts_per_page", "3")
 
 r = go("GET", "/posts?page=1")

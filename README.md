@@ -162,7 +162,7 @@ python -m modules.auth.test_auth
 python -m modules.test_orm
 python -m database.test_installer
 python -m database.test_py_schema
-python -m change_password.content.test_content
+python -m cms.content.test_content
 python -m templates.test_template
 python -m templates.test_integration
 python test_post_editor.py
@@ -177,7 +177,7 @@ core/                          HTTP request, response, router, and server
 database/                      ORM, installer, WordPress schema, and migrations
 modules/auth/                  Passwords, sessions, roles, and auth services
 modules/api/                   JSON API routes
-change_password/content/       Post models, revisions, slugs, and content service
+cms/                           Auth middleware, users, settings, and content (posts, revisions, slugs)
 templates/                     Internal account/admin templates and partials
 themes/                        Public-facing Default and Minimal themes
 blocks/                        CSRF, flash, logging, and theme loading

@@ -27,11 +27,11 @@ from core.request   import Request
 from core.router    import Router
 
 from modules.auth.permissions import can
-from change_password.content.service  import (
+from cms.content.service  import (
     list_posts, get_post_by_slug, create_post, update_post,
     delete_post, NotFoundError, ValidationError,
 )
-from change_password.settings.model   import Setting
+from cms.settings.model   import Setting
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -268,7 +268,7 @@ def register_api_routes(router: Router) -> None:
             return _json_err("Query must be at least 2 characters.", "INVALID_PARAM")
 
         from database.orm import QuerySet
-        from change_password.content.models import Post
+        from cms.content.models import Post
 
         results = (
             QuerySet(Post)

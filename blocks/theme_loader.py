@@ -361,7 +361,7 @@ class ThemeLoader:
 
         # Lazily inject Settings to avoid circular imports at module load time
         try:
-            from change_password.settings.model import Setting
+            from cms.settings.model import Setting
             namespace["settings"] = Setting
         except ImportError:
             namespace["settings"] = None

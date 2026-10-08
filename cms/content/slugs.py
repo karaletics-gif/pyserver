@@ -66,7 +66,7 @@ def unique_slug(
     max_length : hard cap on slug length before the numeric suffix.
     """
     from database.orm import get_connection
-    from change_password.content.models import Post
+    from cms.content.models import Post
 
     base = slugify(title)[:max_length]
     slug = base

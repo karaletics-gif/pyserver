@@ -7,9 +7,9 @@ import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 
 from database.orm           import connect
-from change_password.content.models import Post, PostRevision
-from change_password.content.slugs  import slugify, unique_slug
-from change_password.content.service import (
+from cms.content.models import Post, PostRevision
+from cms.content.slugs  import slugify, unique_slug
+from cms.content.service import (
     create_post, update_post, get_post_by_slug,
     publish_post, unpublish_post, delete_post, list_posts,
     create_page, get_page_by_slug, list_pages,

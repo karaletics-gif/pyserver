@@ -7,7 +7,7 @@ import sys, os, time
 sys.path.insert(0, os.path.dirname(__file__))
 
 from database.orm         import connect
-from change_password.users.model  import User
+from cms.users.model  import User
 
 # Bootstrap DB
 connect(":memory:")
@@ -296,7 +296,7 @@ check_raises("too-short new pw",   AuthError,
 # ─────────────────────────────────────────────────────────────────────────────
 print("\n── AuthMiddleware ────────────────────────────────────────────────────")
 
-from change_password.middleware import AuthMiddleware
+from cms.middleware import AuthMiddleware
 from core.response import Response
 
 class MockRouter:

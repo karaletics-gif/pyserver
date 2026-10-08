@@ -14,7 +14,7 @@ Public API
 from __future__ import annotations
 
 from database.orm             import QuerySet
-from change_password.users.model      import User
+from cms.users.model      import User
 from modules.auth.passwords   import hash_password, verify_password, needs_rehash, validate_password
 from modules.auth.permissions import is_valid_role, ROLE_HIERARCHY
 from modules.auth.sessions    import sessions

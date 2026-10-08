@@ -8,10 +8,10 @@ sys.path.insert(0, os.path.dirname(__file__))
 os.environ["DB_PATH"] = ":memory:"
 import app as _app   # single import, no reload
 
-from change_password.users.model import User
+from cms.users.model import User
 from modules.auth.passwords import hash_password
-from change_password.content.models import Post, PostRevision
-from change_password.content.service import get_revisions
+from cms.content.models import Post, PostRevision
+from cms.content.service import get_revisions
 from database.orm           import QuerySet
 from urllib.parse           import urlencode
 from core.request           import Request
@@ -100,7 +100,7 @@ slug1 = loc.split("/posts/")[1].split("/edit")[0]
 check("redirect has slug",               bool(slug1))
 
 # Verify in DB
-from change_password.content.service import get_post_by_slug
+from cms.content.service import get_post_by_slug
 post = get_post_by_slug(slug1)
 check("post saved to DB",                post.title == "Hello World")
 check("status = draft",                  post.status == "draft")

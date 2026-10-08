@@ -24,7 +24,7 @@ _DATABASE_NAME = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,63}$")
 
 def create_admin_user(name: str, email: str, password: str, allow_weak: bool = False):
     """Persist the first admin with the same model/hash contract used by login."""
-    from change_password.users.model import User
+    from cms.users.model import User
     from database.orm import QuerySet
 
     name = name.strip()

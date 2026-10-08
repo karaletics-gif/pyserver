@@ -32,8 +32,8 @@ from datetime import datetime
 from typing import Any
 
 from database.orm          import QuerySet
-from change_password.content.models import Post, PostRevision
-from change_password.content.slugs  import unique_slug
+from cms.content.models import Post, PostRevision
+from cms.content.slugs  import unique_slug
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -64,7 +64,7 @@ def _resolve_slug(
 ) -> str:
     """Return a validated, unique slug for a post."""
     if explicit_slug:
-        from change_password.content.slugs import slugify
+        from cms.content.slugs import slugify
         slug = slugify(explicit_slug)
     else:
         slug = None  # will be generated from title

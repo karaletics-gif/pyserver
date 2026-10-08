@@ -47,7 +47,7 @@ from blocks.logger        import get_logger
 log = get_logger("app")
 
 # ── Auth ──────────────────────────────────────────────────────────────────────
-from change_password.middleware  import AuthMiddleware
+from cms.middleware  import AuthMiddleware
 from modules.auth.sessions    import sessions
 from modules.auth.permissions import require_login, require_capability, can, ROLE_HIERARCHY
 from modules.auth.service     import (
@@ -59,11 +59,11 @@ from modules.auth.service     import (
 )
 
 # ── Models ────────────────────────────────────────────────────────────────────
-from change_password.users.model     import User
-from change_password.settings.model  import Setting
-from change_password.content.models  import Post
+from cms.users.model     import User
+from cms.settings.model  import Setting
+from cms.content.models  import Post
 from database.py_schema import Comment
-from change_password.content.service import (
+from cms.content.service import (
     list_posts, get_post_by_slug, get_page_by_slug,
     get_revisions, create_post, update_post,
     delete_post as svc_delete_post,

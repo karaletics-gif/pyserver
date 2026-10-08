@@ -8,9 +8,9 @@ import sqlite3
 import tempfile
 import unittest
 
-from change_password.content.models import Post
-from change_password.settings.model import Setting
-from change_password.users.model import User
+from cms.content.models import Post
+from cms.settings.model import Setting
+from cms.users.model import User
 from database.init_db import init_db
 from database.orm import QuerySet, get_connection, pool
 

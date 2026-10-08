@@ -49,7 +49,7 @@ def session_cookie(resp):
     return None
 
 # ── Seed a real admin user directly via ORM ───────────────────────────────────
-from change_password.users.model import User
+from cms.users.model import User
 from modules.auth.passwords import hash_password
 from database.orm import QuerySet
 
@@ -235,7 +235,7 @@ r = dispatch("POST", "/admin/settings", cookie=f"pysess={admin_sess}", form={
 })
 check("save settings → 302",  r.status == 302)
 
-from change_password.settings.model import Setting
+from cms.settings.model import Setting
 check("site_name persisted",  Setting.get_value("site_name") == "IntegrationSite")
 check("posts_per_page saved", Setting.get_value("posts_per_page") == "5")
 
@@ -271,7 +271,7 @@ check("toggle back restored",      jane_restored.active == was_active)
 # ─────────────────────────────────────────────────────────────────────────────
 print("\n── AuthMiddleware injection ─────────────────────────────────────────")
 
-from change_password.middleware import AuthMiddleware
+from cms.middleware import AuthMiddleware
 
 captured = {}
 

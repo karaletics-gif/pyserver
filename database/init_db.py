@@ -12,9 +12,9 @@ from __future__ import annotations
 import os
 
 from database.orm import connect, connect_mysql, get_connection
-from change_password.users.model import User
-from change_password.content.models import Post, PostRevision
-from change_password.settings.model import Setting
+from cms.users.model import User
+from cms.content.models import Post, PostRevision
+from cms.settings.model import Setting
 from modules.auth.passwords import hash_password
 from database.py_schema import PySchema
 
@@ -360,7 +360,7 @@ def _seed() -> None:
 
     # ── Posts ──────────────────────────────────────────────────────────
     if not Post.objects.exists():
-        from change_password.content.service import create_post
+        from cms.content.service import create_post
 
         for title, body, author_id, slug, views in (
             ("Hello World", "Our first post. Welcome to PyServer!",
