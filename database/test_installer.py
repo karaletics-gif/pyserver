@@ -187,7 +187,7 @@ class InstallerTests(unittest.TestCase):
                 ))
 
                 admin_response = router.dispatch(request("GET", "/py-admin"))
-                self.assertEqual(admin_response.status, 401)
+                self.assertEqual(admin_response.status, 302)
 
         pool.close()
 

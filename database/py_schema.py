@@ -139,6 +139,8 @@ class PySchema:
                     "WHERE table_schema = DATABASE() AND table_name = ?", (table,)
                 ).fetchall()
                 columns = {row["column_name"].lower() for row in rows}
+                if not columns:
+                    continue
             else:
                 exists = conn.execute(
                     "SELECT 1 FROM sqlite_master WHERE type='table' AND name = ?", (table,)

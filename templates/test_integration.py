@@ -84,7 +84,7 @@ check("dashboard → 302",      r.status == 302)
 check("redirect to /login",   r.headers.get("Location") == "/login")
 
 r = dispatch("GET", "/py-admin")
-check("admin → 401",          r.status == 401)
+check("admin → 302",          r.status == 302)
 r = dispatch("GET", "/admin")
 check("legacy admin URL redirects", r.status == 302 and r.headers.get("Location") == "/py-admin")
 
@@ -320,7 +320,7 @@ class Req:
 check("admin can manage_users",       protected(Req(admin_u)).status == 200)
 check("editor cannot manage_users",   protected(Req(editor_u)).status == 403)
 check("member cannot manage_users",   protected(Req(member_u)).status == 403)
-check("anon → 401",                   protected(Req(None)).status == 401)
+check("anon → 302",                   protected(Req(None)).status == 302)
 
 login_only = require_login(dummy)
 check("require_login: auth passes",    login_only(Req(member_u)).status == 200)

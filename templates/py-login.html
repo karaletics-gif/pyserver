@@ -1,0 +1,42 @@
+<?py extend("layout.html") ?>
+
+<?py block "title": ?><?= login_title ?> · <?= site_name ?><?py endblock ?>
+
+<?py block "extra_css": ?>
+.auth-card { max-width:420px; margin:60px auto; background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:36px 40px }
+.auth-card h1 { font-size:1.5rem; margin-bottom:6px }
+.auth-card p  { color:var(--muted); font-size:.9rem; margin-bottom:28px }
+.field-help { color:var(--muted); font-size:.8rem; margin-top:4px }
+<?py endblock ?>
+
+<?py block "content": ?>
+<div class="auth-card">
+  <h1><?= login_title ?></h1>
+  <p><?= login_intro ?></p>
+
+  <?py if error: ?>
+    <div class="flash flash-error"><?= error ?></div>
+  <?py end ?>
+
+  <form method="POST" action="/py-login">
+    <input type="hidden" name="_csrf" value="<?= csrf_token ?>">
+    <input type="hidden" name="next" value="<?= login_next ?>">
+    <?=! form_before ?>
+    <?py for f in login_fields: ?>
+    <div class="form-group">
+      <?py if f.get("html"): ?>
+        <?=! f["html"] ?>
+      <?py else: ?>
+        <label for="<?= f['name'] ?>"><?= f.get("label", f["name"]) ?></label>
+        <input type="<?= f.get('type', 'text') ?>" id="<?= f['name'] ?>" name="<?= f['name'] ?>"
+               placeholder="<?= f.get('placeholder', '') ?>" value="<?= f.get('value', '') ?>"
+               autocomplete="<?= f.get('autocomplete', 'off') ?>"<?py if f.get("required", True): ?> required<?py end ?>>
+        <?py if f.get("help"): ?><div class="field-help"><?= f["help"] ?></div><?py end ?>
+      <?py end ?>
+    </div>
+    <?py end ?>
+    <?=! form_after ?>
+    <button type="submit" style="width:100%; margin-top:8px"><?= login_button ?></button>
+  </form>
+</div>
+<?py endblock ?>

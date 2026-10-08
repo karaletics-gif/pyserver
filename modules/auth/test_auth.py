@@ -174,7 +174,7 @@ check("require_capability 403 for editor", resp_403.status == 403)
 resp_200 = protected(FakeReqWithUser())
 check("require_capability 200 for admin",  resp_200.status == 200)
 resp_401 = protected(FakeReqNoUser())
-check("require_capability 401 unauthenticated", resp_401.status == 401)
+check("require_capability redirects to py-login", resp_401.status == 302 and resp_401.headers.get("Location","").startswith("/py-login"))
 
 
 # ─────────────────────────────────────────────────────────────────────────────

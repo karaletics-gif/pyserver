@@ -186,6 +186,36 @@ Open `/py-admin` (the old `/admin` redirects here). Sections:
 - **Settings:** site name, tagline, and posts per page.
 - **Themes:** switch between installed themes; the choice is saved and applies to the public site.
 
+### Admin login (`/py-login`)
+
+Visiting a protected admin or editor page while signed out redirects to `/py-login?next=<page>`. After signing in you return to that page; admins default to `/py-admin`, others to `/dashboard`. Only same-site paths are accepted as `next`.
+
+Developers can customise the login from a theme's `theme.py` (or any plugin code) using the shared hook registry (`hooks`). Full details are in `modules/auth/login_page.py`.
+
+| Hook | Type | Purpose |
+| --- | --- | --- |
+| `auth.login.fields` | filter | Add, remove or reorder form fields |
+| `auth.login.form_before` / `auth.login.form_after` | filter | Inject raw HTML around the fields |
+| `auth.login.page_context` | filter | Change title, intro, button text |
+| `auth.login.validate` | filter | Extra validation before authentication; append error strings |
+| `auth.login.credentials` | filter | Modify email/password before checking |
+| `auth.login.allowed` | filter | Block after credentials pass (return `False` or an error string) |
+| `auth.login.error_message` | filter | Rewrite the error shown |
+| `auth.login.redirect` | filter | Choose where to go after login |
+| `auth.login.url` | filter | Change where anonymous users are sent |
+| `auth.login.response` | filter | Adjust the final response (cookies, headers) |
+| `auth.login.before` / `auth.login.after` / `auth.login.failed` | action | React to login attempts |
+
+```python
+@hooks.filter("auth.login.fields")
+def add_pin(fields, request):
+    return fields + [{"name": "pin", "label": "PIN", "type": "password"}]
+
+@hooks.filter("auth.login.validate")
+def check_pin(errors, form, request):
+    return errors + ([] if form.get("pin") == "1234" else ["Wrong PIN."])
+```
+
 ## 11. Themes
 
 Themes live in `themes/<name>/` with `index.html`, `editor.html`, `theme.py`, and an `assets/` folder served at `/themes/<name>/assets/<file>`. Bundled themes are **Default** and **Minimal**. To add one, copy a bundled theme folder, rename it, edit `theme.py` and the templates, then select it under Themes.

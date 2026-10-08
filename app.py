@@ -37,7 +37,7 @@ from core.router        import Router
 from core.server        import Server
 from core.request       import Request
 from core.response      import Response
-from cookie.hooks         import HookRegistry
+from cookie.hooks         import HookRegistry, hooks
 from blocks.theme_loader  import ThemeLoader, ThemeError
 from cookie.template_engine import TemplateEngine
 from blocks.flash         import set_flash, inject_flash, clear_flash
@@ -73,7 +73,6 @@ from database.orm import QuerySet
 
 # ── Theme system ──────────────────────────────────────────────────────────────
 THEMES_DIR = os.path.join(os.path.dirname(__file__), "themes")
-hooks      = HookRegistry()
 loader     = ThemeLoader(THEMES_DIR, hooks=hooks)
 
 _active_slug = Setting.get_value("active_theme", "default")
@@ -381,6 +380,9 @@ def logout(request: Request) -> Response:
     resp = Response.redirect("/login")
     resp.set_cookie(sessions.clear_cookie())
     return resp
+
+from modules.auth.login_page import register_login_routes
+register_login_routes(router, admin_render)
 
 # ── Protected ─────────────────────────────────────────────────────────────────
 
